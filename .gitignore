@@ -1,0 +1,8 @@
+DEPLOY_PORTAINER.md
+PROJECT_CONTEXT.md
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+.DS_Store
+Thumbs.db
