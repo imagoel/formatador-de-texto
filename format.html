@@ -118,9 +118,18 @@ input[type=number]{width:62px;text-align:right}
 .log .info{color:var(--ink-light)}
 
 /* ── Article review ── */
+.review-summary-panel{display:none}
+.review-summary-panel.show{display:block}
+.review-summary{padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px}
+.review-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:500;border:1px solid var(--border);background:var(--paper);color:var(--ink-mid)}
+.review-pill.ok{border-color:rgba(45,107,64,.25);color:var(--green)}
+.review-pill.warn{border-color:rgba(182,132,45,.25);color:#8a641d}
+.review-pill.review{border-color:rgba(42,95,168,.22);color:var(--blue)}
+.review-pill.info{border-color:var(--border2);color:var(--ink-light)}
 .review-panel{display:none}
 .review-panel.show{display:block}
 .review-body{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.review-section-title{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-light);padding-top:2px}
 .review-item{border:1px solid var(--border);border-radius:7px;padding:8px 10px;background:var(--paper)}
 .review-item strong{display:block;font-size:12px;font-weight:500;color:var(--ink);margin-bottom:2px}
 .review-item span{display:block;font-size:11.5px;line-height:1.55;color:var(--ink-mid)}
@@ -128,6 +137,10 @@ input[type=number]{width:62px;text-align:right}
 .review-item.warn{border-left:3px solid #b6842d}
 .review-item.review{border-left:3px solid var(--blue)}
 .review-item.info{border-left:3px solid var(--paper-3)}
+.review-group{border:1px solid var(--border);border-radius:7px;background:var(--paper);overflow:hidden}
+.review-group summary{cursor:pointer;list-style:none;padding:9px 10px;font-size:12px;font-weight:500;color:var(--ink-mid)}
+.review-group summary::-webkit-details-marker{display:none}
+.review-group-body{padding:0 10px 10px;display:flex;flex-direction:column;gap:8px}
 
 /* ── Note ── */
 .note{font-size:11.5px;color:var(--ink-light);line-height:1.65;padding:8px 12px;background:var(--paper-2);border-left:2px solid var(--paper-3);border-radius:0 5px 5px 0}
@@ -201,6 +214,7 @@ input[type=number]{width:62px;text-align:right}
             <option value="keep">— manter original —</option>
             <option value="Times New Roman">Times New Roman</option>
             <option value="Arial">Arial</option>
+            <option value="Bodoni MT">Bodoni MT</option>
             <option value="Calibri">Calibri</option>
             <option value="Georgia">Georgia</option>
           </select>
@@ -210,7 +224,7 @@ input[type=number]{width:62px;text-align:right}
           <input type="number" id="sizeNormal" value="12" min="6" max="72" step=".5">
         </div>
         <div class="row">
-          <span class="row-label">Tamanho compacto (pt)<small>citacoes, notas e legendas</small></span>
+          <span class="row-label">Tamanho — citacoes e notas (pt)<small>citacoes longas, notas e legendas</small></span>
           <input type="number" id="sizeCompact" value="10" min="6" max="72" step=".5">
         </div>
         <div class="row">
@@ -223,7 +237,7 @@ input[type=number]{width:62px;text-align:right}
           </select>
         </div>
         <div class="row">
-          <span class="row-label">Espaçamento — compacto<small>citações, notas, referências</small></span>
+          <span class="row-label">Espaçamento — citacoes e notas<small>citacoes longas, notas e referencias</small></span>
           <select id="spacingCompact">
             <option value="1">Simples (1,0)</option>
             <option value="1.15">1,15</option>
@@ -246,7 +260,7 @@ input[type=number]{width:62px;text-align:right}
 
       <div class="panel-hd" style="border-top:1px solid var(--border)">Opção extra</div>
       <div class="toggles">
-        <label class="toggle-row"><input type="checkbox" id="chkAlign" checked> Justificar parágrafos</label>
+        <label class="toggle-row"><input type="checkbox" id="chkAlign" checked> Justificar parágrafos <small>referencias ficam alinhadas à esquerda</small></label>
       </div>
     </div>
 
@@ -256,6 +270,11 @@ input[type=number]{width:62px;text-align:right}
       </svg>
       Formatar e baixar
     </button>
+
+    <div class="panel review-summary-panel" id="reviewSummaryPanel">
+      <div class="panel-hd">Resumo da triagem</div>
+      <div class="review-summary" id="reviewSummary"></div>
+    </div>
 
     <div class="panel review-panel" id="reviewPanel">
       <div class="panel-hd">Triagem do artigo</div>
@@ -296,11 +315,11 @@ const BUILT_IN_PRESETS = [
     builtIn: true,
     articleReview: true,
     values: {
-      fonte: 'Times New Roman',
+      fonte: 'Bodoni MT',
       sizeNormal: 12, sizeCompact: 10,
-      spacingNormal: '1.5', spacingCompact: '1',
+      spacingNormal: '1', spacingCompact: '1',
       indentFirst: 1.25,
-      mTop: 2.5, mBottom: 2.5, mLeft: 2.5, mRight: 2.5,
+      mTop: 2, mBottom: 2, mLeft: 2, mRight: 2,
       chkAlign: false
     }
   }
@@ -739,14 +758,54 @@ function patchStyles(dom, cfg) {
 function renderArticleReview(report) {
   const panel = $('reviewPanel');
   const body  = $('reviewBody');
+  const summaryPanel = $('reviewSummaryPanel');
+  const summary = $('reviewSummary');
   if (!report || !report.items || !report.items.length) {
     panel.classList.remove('show');
+    summaryPanel.classList.remove('show');
     body.innerHTML = '';
+    summary.innerHTML = '';
     return;
   }
-  body.innerHTML = report.items.map(item =>
+
+  const counts = { warn: 0, review: 0, info: 0, ok: 0 };
+  report.items.forEach(item => { counts[item.status] = (counts[item.status] || 0) + 1; });
+
+  summary.innerHTML = [
+    { status: 'warn',   label: 'Atenção',        count: counts.warn },
+    { status: 'review', label: 'Revisão humana', count: counts.review },
+    { status: 'info',   label: 'Informativos',   count: counts.info },
+    { status: 'ok',     label: 'Aprovados',      count: counts.ok },
+  ].filter(item => item.count > 0).map(item =>
+    `<span class="review-pill ${item.status}">${item.count} ${escHtml(item.label)}</span>`
+  ).join('');
+
+  const priorityOrder = { warn: 0, review: 1, info: 2, ok: 3 };
+  const sorted = [...report.items].sort((a, b) => priorityOrder[a.status] - priorityOrder[b.status]);
+  const primaryItems = sorted.filter(item => item.status === 'warn' || item.status === 'review');
+  const infoItems = sorted.filter(item => item.status === 'info');
+  const okItems = sorted.filter(item => item.status === 'ok');
+
+  const renderItems = items => items.map(item =>
     `<div class="review-item ${item.status}"><strong>${escHtml(item.title)}</strong><span>${escHtml(item.body)}</span></div>`
   ).join('');
+
+  let html = '';
+  if (primaryItems.length) {
+    html += `<div class="review-section-title">Prioridade de revisão</div>${renderItems(primaryItems)}`;
+  }
+  if (infoItems.length) {
+    html += `<div class="review-section-title">Informações úteis</div>${renderItems(infoItems)}`;
+  }
+  if (!primaryItems.length && !infoItems.length && okItems.length) {
+    html += `<div class="review-item ok"><strong>Sem alertas principais</strong><span>A verificação automática não encontrou pendências prioritárias nesta triagem inicial.</span></div>`;
+  }
+  if (okItems.length) {
+    html += `<details class="review-group"><summary>Mostrar itens aprovados (${okItems.length})</summary><div class="review-group-body">${renderItems(okItems)}</div></details>`;
+  }
+
+  body.innerHTML = html;
+  summaryPanel.classList.add('show');
   panel.classList.add('show');
 }
 
