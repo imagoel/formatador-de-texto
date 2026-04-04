@@ -75,6 +75,38 @@ Principio central:
 
 ---
 
+## Status atualizado (04/04/2026)
+
+Resumo rapido da avaliacao do roadmap contra o que ja esta implementado no projeto.
+
+### Concluido
+
+- [x] Fase 0: prova de conceito de substituicao com runs fragmentados
+- [x] Fase 1 (base): `fieldsEnabled`, `fields`, `structureHints` e compatibilidade com presets atuais
+- [x] Fase 2: painel dinamico de campos com estados visuais e edicao manual
+- [x] Fase 3: extracao inicial do arquivo + nivel de reconhecimento da estrutura
+- [x] Fase 4 (nivel 1): mapeamento manual assistido por paragrafo com `sourceRef`
+- [x] Fase 5 (parcial do escopo): aplicacao pontual no DOCX com `replace` e `insert`
+- [x] Fase 6: `Artigo` consolidado como primeiro preset com campos
+- [x] Camada editorial: template de primeira pagina, header/footer, DOI, datas editoriais e citacao curta
+- [x] UX principal: toasts, estado personalizado, tabs da sidebar, dropzone ampliada, CTA mobile
+
+### Parcial
+
+- [ ] Fase 1 (schema completo): falta formalizar `validations` e `manualMapping` como blocos declarativos no schema do preset
+- [ ] Fase 5 (escopo completo): `applyMode: suggest` ainda nao foi implementado como fluxo completo
+- [ ] Estrutura de codigo: blocos logicos estao organizados, mas ainda em arquivo unico (`format.html`)
+- [ ] Validacoes por preset: triagem do `Artigo` existe, mas nao ha motor generico de validacao por schema para todos os presets
+
+### Pendente
+
+- [ ] Fase 7: criar preset institucional novo (`Despacho de bens`)
+- [ ] Mapeamento manual nivel 2 (selecao de trecho de texto)
+- [ ] Mapeamento manual nivel 3 (selecao por intervalo inicio/fim)
+- [ ] Camada opcional de backend/API para necessidades institucionais (ex.: numeracao oficial de controle)
+
+---
+
 ## Decisao de produto
 
 Resumo aprovado:
