@@ -2361,6 +2361,103 @@ function copyTemplateHeaderFooterSpacing(templateSectPr, targetSectPr) {
   });
 }
 
+function getStyleIdFromNode(node) {
+  if (!node) return '';
+  return node.getAttribute('w:styleId') || node.getAttributeNS(W, 'styleId') || '';
+}
+
+function collectStyleIdsFromWordPart(dom) {
+  const ids = new Set();
+  ['pStyle', 'rStyle', 'tblStyle'].forEach(tag => {
+    wAll(dom, tag).forEach(node => {
+      const styleId = wGa(node, 'val');
+      if (styleId) ids.add(styleId);
+    });
+  });
+  return ids;
+}
+
+function collectStyleDependencyIds(styleNode) {
+  const deps = [];
+  ['basedOn', 'next', 'link'].forEach(tag => {
+    const depNode = w1(styleNode, tag);
+    const depId = depNode ? wGa(depNode, 'val') : '';
+    if (depId) deps.push(depId);
+  });
+  return deps;
+}
+
+async function syncTemplateStylesForHeaderFooter(targetZip, templateZip, parser, copiedMap) {
+  const sourcePartPaths = [...copiedMap.keys()].filter(path => /^word\/(header|footer)\d+(?:_codex_\d+)*\.xml$/i.test(path));
+  if (!sourcePartPaths.length) return { copied: 0, missing: [] };
+
+  const templateStylesDom = await loadXmlFromZip(templateZip, 'word/styles.xml', parser);
+  const targetStylesDom = await loadXmlFromZip(targetZip, 'word/styles.xml', parser);
+  if (!templateStylesDom || !targetStylesDom) return { copied: 0, missing: [] };
+
+  const templateStylesById = new Map();
+  wAll(templateStylesDom, 'style').forEach(styleNode => {
+    const styleId = getStyleIdFromNode(styleNode);
+    if (styleId) templateStylesById.set(styleId, styleNode);
+  });
+
+  const targetStylesRoot = targetStylesDom.documentElement;
+  const targetStyleIds = new Set(
+    wAll(targetStylesDom, 'style')
+      .map(styleNode => getStyleIdFromNode(styleNode))
+      .filter(Boolean)
+  );
+
+  const queue = [];
+  const queued = new Set();
+  sourcePartPaths.forEach(path => {
+    queue.push(path);
+  });
+
+  const neededStyleIds = new Set();
+  while (queue.length) {
+    const path = queue.shift();
+    const partDom = await loadXmlFromZip(templateZip, path, parser);
+    if (!partDom) continue;
+    collectStyleIdsFromWordPart(partDom).forEach(styleId => neededStyleIds.add(styleId));
+  }
+
+  const pendingStyleIds = [...neededStyleIds];
+  const missing = [];
+  let copied = 0;
+
+  while (pendingStyleIds.length) {
+    const styleId = pendingStyleIds.shift();
+    if (!styleId || targetStyleIds.has(styleId)) continue;
+    if (queued.has(styleId)) continue;
+    queued.add(styleId);
+
+    const templateStyleNode = templateStylesById.get(styleId);
+    if (!templateStyleNode) {
+      missing.push(styleId);
+      continue;
+    }
+
+    const importedStyle = targetStylesDom.importNode(templateStyleNode, true);
+    targetStylesRoot.appendChild(importedStyle);
+    targetStyleIds.add(styleId);
+    copied++;
+
+    collectStyleDependencyIds(templateStyleNode).forEach(depStyleId => {
+      if (!depStyleId || targetStyleIds.has(depStyleId) || queued.has(depStyleId)) return;
+      pendingStyleIds.push(depStyleId);
+    });
+  }
+
+  if (copied) {
+    targetZip.file('word/styles.xml', cleanXmlMarkup(new XMLSerializer().serializeToString(targetStylesDom)));
+  }
+  return {
+    copied,
+    missing: [...new Set(missing)]
+  };
+}
+
 async function applyFirstPageTemplateFromPreset(targetZip, targetDocDom, templateConfig, parser) {
   const templateZip = await loadTemplateZip(templateConfig);
   if (!templateZip) return { applied: false, reason: 'template_unavailable' };
@@ -2422,9 +2519,11 @@ async function applyFirstPageTemplateFromPreset(targetZip, targetDocDom, templat
   if (targetContentTypesDom) {
     targetZip.file('[Content_Types].xml', cleanXmlMarkup(new XMLSerializer().serializeToString(targetContentTypesDom)));
   }
+  const styleSync = await syncTemplateStylesForHeaderFooter(targetZip, templateZip, parser, copiedMap);
   return {
     applied: importedNodes.length > 0,
-    copiedParts: copiedMap.size
+    copiedParts: copiedMap.size,
+    styleSync
   };
 }
 
