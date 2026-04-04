@@ -305,7 +305,7 @@ input[type=number]{width:62px;text-align:right}
 .action-note{display:none}
 
 :root[data-theme="dark"]{
-  --ink:#e6ebf3;--ink-mid:#bcc6d4;--ink-light:#8e9ab0;
+  --ink:#e6ebf3;--ink-mid:#c7d2e1;--ink-light:#a8b3c6;
   --paper:#151a23;--paper-2:#1c2431;--paper-3:#2a3445;
   --accent:#4f8dee;--accent2:#3f7bd0;--accent-rgb:79,141,238;
   --danger:#ff7e6d;--danger2:#ff9a8e;--green:#57b37a;--blue:#8ab4ff;
@@ -329,6 +329,11 @@ input[type=number]{width:62px;text-align:right}
 :root[data-theme="dark"] .pill.active .pill-del,:root[data-theme="dark"] .pill.current-pill.active .pill-del{color:#f5f9ff;opacity:.9}
 :root[data-theme="dark"] .pill.active:hover,:root[data-theme="dark"] .sidebar-tab-btn.active:hover,:root[data-theme="dark"] .field-apply-mode-btn.active:hover{filter:brightness(1.06)}
 :root[data-theme="dark"] .sidebar-tab-btn:disabled,:root[data-theme="dark"] .field-map-btn:disabled,:root[data-theme="dark"] .field-apply-mode-btn:disabled,:root[data-theme="dark"] .btn-save-preset:disabled,:root[data-theme="dark"] .btn-confirm:disabled,:root[data-theme="dark"] .btn-cancel:disabled,:root[data-theme="dark"] .pill:disabled,:root[data-theme="dark"] .btn-go:disabled{background:#141b26!important;color:#8592a9!important;border-color:rgba(226,235,248,.14)!important;opacity:.64}
+:root[data-theme="dark"] .panel-hd,:root[data-theme="dark"] .field-group-title,:root[data-theme="dark"] .review-section-title{color:#c5d2e6}
+:root[data-theme="dark"] .row-label small,:root[data-theme="dark"] .m-item label,:root[data-theme="dark"] .workspace-note,:root[data-theme="dark"] .article-fields-note,:root[data-theme="dark"] .field-meta,:root[data-theme="dark"] .field-source-note,:root[data-theme="dark"] .mode-note-copy,:root[data-theme="dark"] .review-item span,:root[data-theme="dark"] .note,:root[data-theme="dark"] .preview-box .preview-meta,:root[data-theme="dark"] .info-tag{color:#b7c3d8}
+:root[data-theme="dark"] .info-tag strong{color:#eaf1fc}
+:root[data-theme="dark"] .global-drop-overlay-inner span{color:#c9d6ea}
+:root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder{color:#95a5bf;opacity:1}
 :root[data-theme="dark"] .toast{background:rgba(26,34,48,.96);border-color:var(--border2);color:var(--ink-mid)}
 :root[data-theme="dark"] .global-drop-overlay-inner{background:linear-gradient(180deg,rgba(26,34,48,.96),rgba(21,28,40,.96));border-color:rgba(255,255,255,.2)}
 :root[data-theme="dark"] .action-button-wrap .btn-go{box-shadow:0 -6px 22px rgba(0,0,0,.34),0 16px 32px rgba(0,0,0,.44)}
@@ -336,7 +341,7 @@ input[type=number]{width:62px;text-align:right}
 
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --ink:#e6ebf3;--ink-mid:#bcc6d4;--ink-light:#8e9ab0;
+    --ink:#e6ebf3;--ink-mid:#c7d2e1;--ink-light:#a8b3c6;
     --paper:#151a23;--paper-2:#1c2431;--paper-3:#2a3445;
     --accent:#4f8dee;--accent2:#3f7bd0;--accent-rgb:79,141,238;
     --danger:#ff7e6d;--danger2:#ff9a8e;--green:#57b37a;--blue:#8ab4ff;
@@ -360,6 +365,11 @@ input[type=number]{width:62px;text-align:right}
   :root:not([data-theme="light"]) .pill.active .pill-del,:root:not([data-theme="light"]) .pill.current-pill.active .pill-del{color:#f5f9ff;opacity:.9}
   :root:not([data-theme="light"]) .pill.active:hover,:root:not([data-theme="light"]) .sidebar-tab-btn.active:hover,:root:not([data-theme="light"]) .field-apply-mode-btn.active:hover{filter:brightness(1.06)}
   :root:not([data-theme="light"]) .sidebar-tab-btn:disabled,:root:not([data-theme="light"]) .field-map-btn:disabled,:root:not([data-theme="light"]) .field-apply-mode-btn:disabled,:root:not([data-theme="light"]) .btn-save-preset:disabled,:root:not([data-theme="light"]) .btn-confirm:disabled,:root:not([data-theme="light"]) .btn-cancel:disabled,:root:not([data-theme="light"]) .pill:disabled,:root:not([data-theme="light"]) .btn-go:disabled{background:#141b26!important;color:#8592a9!important;border-color:rgba(226,235,248,.14)!important;opacity:.64}
+  :root:not([data-theme="light"]) .panel-hd,:root:not([data-theme="light"]) .field-group-title,:root:not([data-theme="light"]) .review-section-title{color:#c5d2e6}
+  :root:not([data-theme="light"]) .row-label small,:root:not([data-theme="light"]) .m-item label,:root:not([data-theme="light"]) .workspace-note,:root:not([data-theme="light"]) .article-fields-note,:root:not([data-theme="light"]) .field-meta,:root:not([data-theme="light"]) .field-source-note,:root:not([data-theme="light"]) .mode-note-copy,:root:not([data-theme="light"]) .review-item span,:root:not([data-theme="light"]) .note,:root:not([data-theme="light"]) .preview-box .preview-meta,:root:not([data-theme="light"]) .info-tag{color:#b7c3d8}
+  :root:not([data-theme="light"]) .info-tag strong{color:#eaf1fc}
+  :root:not([data-theme="light"]) .global-drop-overlay-inner span{color:#c9d6ea}
+  :root:not([data-theme="light"]) input::placeholder,:root:not([data-theme="light"]) textarea::placeholder{color:#95a5bf;opacity:1}
   :root:not([data-theme="light"]) .toast{background:rgba(26,34,48,.96);border-color:var(--border2);color:var(--ink-mid)}
   :root:not([data-theme="light"]) .global-drop-overlay-inner{background:linear-gradient(180deg,rgba(26,34,48,.96),rgba(21,28,40,.96));border-color:rgba(255,255,255,.2)}
   :root:not([data-theme="light"]) .action-button-wrap .btn-go{box-shadow:0 -6px 22px rgba(0,0,0,.34),0 16px 32px rgba(0,0,0,.44)}
