@@ -603,6 +603,17 @@ const ARTICLE_FIELD_DEFS = [
   { id: 'citacao_rodape', label: 'Citacao curta do rodape', group: 'Bibliografia editorial', type: 'textarea', required: false, applyMode: 'template', allowManualMap: false, help: 'Linha de citacao curta usada no rodape do artigo.' }
 ];
 
+const ARTICLE_EDITORIAL_FALLBACK_CONTEXT = {
+  doi: 'https://doi.org/10.31977/grirfi.v26i1.5595',
+  recebido_em: '05/08/2025',
+  aprovado_em: '17/01/2026',
+  received_em: '08/05/2025',
+  approved_em: '01/17/2026',
+  citationLine: 'HECK, Ralph Leal. Do um-em-muitos aos fluxos continuos. Griot: Revista de Filosofia, Amargosa - BA, v.26 n.1, p.1-19, fevereiro, 2026.',
+  citationSuffix: 'Griot: Revista de Filosofia, Amargosa - BA, v.26 n.1, p.1-19, fevereiro, 2026.',
+  journalLine: 'Griot: Revista de Filosofia, Amargosa - BA, v.26, n.1, p.1-19, fevereiro, 2026 ISSN 2178-1036'
+};
+
 const FIELD_STATE_META = {
   detected_auto: { label: 'Detectado automaticamente', className: 'detected' },
   selected_in_document: { label: 'Selecionado no documento', className: 'selected' },
@@ -1984,14 +1995,14 @@ function extractDoiFromText(text) {
 function extractEditorialDatesFromText(text) {
   const raw = normalizeInlineText(text);
   if (!raw) return null;
-  const ptMatch = raw.match(/Recebido:\s*(.+?)\s*\|\s*Aprovado:\s*(.+)$/i);
+  const ptMatch = raw.match(/Recebido:\s*(.+?)\s*(?:\|\s*)?Aprovado:\s*(.+)$/i);
   if (ptMatch) {
     return {
       recebido_em: normalizeInlineText(ptMatch[1]),
       aprovado_em: normalizeInlineText(ptMatch[2])
     };
   }
-  const enMatch = raw.match(/Received:\s*(.+?)\s*\|\s*Approved:\s*(.+)$/i);
+  const enMatch = raw.match(/Received:\s*(.+?)\s*(?:\|\s*)?Approved:\s*(.+)$/i);
   if (enMatch) {
     return {
       received_em: normalizeInlineText(enMatch[1]),
@@ -2100,31 +2111,34 @@ function extractArticleEditorialContextFromParts(headerDocs, footerDocs, docDom,
 }
 
 async function extractArticleEditorialContext(zip, parser, docDom, preset = getActivePreset()) {
+  let fileContext = null;
+  let templateContext = null;
+
   try {
     const documentRelsDom = await loadXmlFromZip(zip, 'word/_rels/document.xml.rels', parser);
     const headerDocs = await loadWordPartDocs(zip, parser, WORD_HEADER_PART_RE);
     const footerDocs = await loadWordPartDocs(zip, parser, WORD_FOOTER_PART_RE);
-    let context = extractArticleEditorialContextFromParts(headerDocs, footerDocs, docDom, documentRelsDom);
-
-    const templateConfig = getActiveEditorialTemplateConfig(preset);
-    if (templateConfig?.path) {
-      try {
-        const templateZip = await loadTemplateZip(templateConfig);
-        const templateDocDom = await loadXmlFromZip(templateZip, 'word/document.xml', parser);
-        const templateDocRelsDom = await loadXmlFromZip(templateZip, 'word/_rels/document.xml.rels', parser);
-        const templateHeaderDocs = await loadWordPartDocs(templateZip, parser, WORD_HEADER_PART_RE);
-        const templateFooterDocs = await loadWordPartDocs(templateZip, parser, WORD_FOOTER_PART_RE);
-        const templateContext = extractArticleEditorialContextFromParts(templateHeaderDocs, templateFooterDocs, templateDocDom, templateDocRelsDom);
-        context = mergeArticleEditorialContext(context, templateContext);
-      } catch {
-        // O template editorial continua opcional na leitura de contexto.
-      }
-    }
-
-    return context;
+    fileContext = extractArticleEditorialContextFromParts(headerDocs, footerDocs, docDom, documentRelsDom);
   } catch {
-    return null;
+    // Continua para tentar complementar pelo template do preset.
   }
+
+  const templateConfig = getActiveEditorialTemplateConfig(preset);
+  if (templateConfig?.path) {
+    try {
+      const templateZip = await loadTemplateZip(templateConfig);
+      const templateDocDom = await loadXmlFromZip(templateZip, 'word/document.xml', parser);
+      const templateDocRelsDom = await loadXmlFromZip(templateZip, 'word/_rels/document.xml.rels', parser);
+      const templateHeaderDocs = await loadWordPartDocs(templateZip, parser, WORD_HEADER_PART_RE);
+      const templateFooterDocs = await loadWordPartDocs(templateZip, parser, WORD_FOOTER_PART_RE);
+      templateContext = extractArticleEditorialContextFromParts(templateHeaderDocs, templateFooterDocs, templateDocDom, templateDocRelsDom);
+    } catch {
+      // O template editorial continua opcional na leitura de contexto.
+    }
+  }
+
+  const fromTemplate = mergeArticleEditorialContext(templateContext || {}, ARTICLE_EDITORIAL_FALLBACK_CONTEXT);
+  return mergeArticleEditorialContext(fileContext || {}, fromTemplate);
 }
 
 function formatAuthorNameForCitation(name) {
@@ -2151,7 +2165,7 @@ function buildArticleFooterCitation(stateMap, editorialContext) {
   const author = formatAuthorNameForCitation(stateMap?.autor_nome?.value || '');
   const title = normalizeInlineText(stateMap?.titulo_pt?.value || stateMap?.titulo_en?.value || '');
   const suffix = normalizeInlineText(editorialContext?.citationSuffix || '');
-  if (!author || !title || !suffix) return '';
+  if (!author || !title || !suffix) return normalizeInlineText(editorialContext?.citationLine || '');
   return `${buildCitationSegment(author)} ${buildCitationSegment(title)} ${suffix}`.replace(/\s+/g, ' ').trim();
 }
 
@@ -2186,11 +2200,13 @@ function syncArticleEditorialDefaults(preset = getActivePreset(), editorialConte
   if (!preset?.fieldsEnabled || !preset.articleReview) return [];
   const stateMap = ensurePresetFieldStates(preset);
   const changed = [];
+  const receivedPt = normalizeInlineText(editorialContext?.recebido_em || editorialContext?.received_em || '');
+  const approvedPt = normalizeInlineText(editorialContext?.aprovado_em || editorialContext?.approved_em || '');
 
   [
     ['doi', editorialContext?.doi],
-    ['recebido_em', editorialContext?.recebido_em],
-    ['aprovado_em', editorialContext?.aprovado_em]
+    ['recebido_em', receivedPt],
+    ['aprovado_em', approvedPt]
   ].forEach(([fieldId, value]) => {
     if (setModelDefaultFieldValue(stateMap, fieldId, value)) changed.push(fieldId);
   });
@@ -2219,7 +2235,9 @@ function collectFieldMappingsForFormat(preset = getActivePreset()) {
       fieldId: field.id,
       label: field.label,
       applyMode: field.applyMode,
-      value: String(state.value).trim(),
+      value: IDENTITY_INSERTION_FIELD_IDS.has(field.id)
+        ? normalizeManualIdentityFieldValue(field.id, state.value)
+        : String(state.value).trim(),
       sourceState: state.sourceState,
       sourceRef: state.sourceRef,
       sourceOrigin: state.sourceOrigin || null
@@ -2250,6 +2268,18 @@ function normalizeManualIdentityFieldValue(fieldId, rawValue) {
     return `https://orcid.org/${value}`;
   }
   return value;
+}
+
+function collectIdentityTargetTextsForFormat(preset = getActivePreset()) {
+  if (!preset?.fieldsEnabled || !preset?.articleReview) return [];
+  const stateMap = ensurePresetFieldStates(preset);
+  const ids = ['autor_nome', 'autor_instituicao', 'autor_orcid', 'autor_email'];
+  return [...new Set(
+    ids
+      .map(id => normalizeManualIdentityFieldValue(id, stateMap[id]?.value || ''))
+      .map(value => normText(value))
+      .filter(Boolean)
+  )];
 }
 
 function collectArticleManualIdentityPlan(preset = getActivePreset()) {
@@ -2367,6 +2397,7 @@ async function runFormat() {
   const formatOptions = {
     fieldMappings: mappingPlan.fieldMappings,
     manualIdentityPlan: collectArticleManualIdentityPlan(),
+    identityTargetTexts: collectIdentityTargetTextsForFormat(),
     editorialTemplate: getActiveEditorialTemplateConfig(),
     editorialReplacements: collectEditorialTemplateReplacements(),
     runtimeReport: {}
@@ -3370,6 +3401,147 @@ function getParagraphPlainText(para) {
   return wAll(para, 't').map(t => t.textContent || '').join('').replace(/\s+/g, ' ').trim();
 }
 
+function buildCanonicalResumoLabelText(text) {
+  const raw = normalizeInlineText(text);
+  if (!raw) return '';
+  if (/^resumo$/i.test(raw)) return 'RESUMO:';
+
+  const explicit = raw.match(/^resumo\s*[:\-–—]\s*(.*)$/i);
+  if (explicit) {
+    const tail = normalizeInlineText(explicit[1] || '');
+    return tail ? `RESUMO: ${tail}` : 'RESUMO:';
+  }
+
+  const inline = raw.match(/^resumo\s+(.+)$/i);
+  if (inline) {
+    const tail = normalizeInlineText(inline[1] || '');
+    return tail ? `RESUMO: ${tail}` : 'RESUMO:';
+  }
+
+  return '';
+}
+
+const ARTICLE_LABEL_CANONICAL_RULES = [
+  {
+    canonical: 'RESUMO',
+    exact: /^resumo$/i,
+    explicit: /^resumo\s*[:\-]\s*(.*)$/i,
+    inline: /^resumo\s+(.+)$/i
+  },
+  {
+    canonical: 'PALAVRAS-CHAVE',
+    exact: /^palavras?\s*-?\s*chave$/i,
+    explicit: /^palavras?\s*-?\s*chave\s*[:\-]\s*(.*)$/i,
+    inline: /^palavras?\s*-?\s*chave\s+(.+)$/i
+  },
+  {
+    canonical: 'ABSTRACT',
+    exact: /^abstract$/i,
+    explicit: /^abstract\s*[:\-]\s*(.*)$/i,
+    inline: /^abstract\s+(.+)$/i
+  },
+  {
+    canonical: 'KEYWORDS',
+    exact: /^keywords?$/i,
+    explicit: /^keywords?\s*[:\-]\s*(.*)$/i,
+    inline: /^keywords?\s+(.+)$/i
+  }
+];
+
+function buildCanonicalArticleLabelText(text) {
+  const raw = normalizeInlineText(text);
+  if (!raw) return '';
+
+  for (const rule of ARTICLE_LABEL_CANONICAL_RULES) {
+    if (rule.exact.test(raw)) return `${rule.canonical}:`;
+
+    const explicit = raw.match(rule.explicit);
+    if (explicit) {
+      const tail = normalizeInlineText(explicit[1] || '');
+      return tail ? `${rule.canonical}: ${tail}` : `${rule.canonical}:`;
+    }
+
+    const inline = raw.match(rule.inline);
+    if (inline) {
+      const tail = normalizeInlineText(inline[1] || '');
+      return tail ? `${rule.canonical}: ${tail}` : `${rule.canonical}:`;
+    }
+  }
+
+  return '';
+}
+
+function normalizeArticleResumoLabel(docDom) {
+  const paragraphs = wAll(docDom, 'p');
+  const changed = [];
+
+  paragraphs.forEach((para, index) => {
+    const currentText = getParagraphPlainText(para);
+    const targetText = buildCanonicalArticleLabelText(currentText);
+    if (!targetText) return;
+    if (normalizeInlineText(currentText) === normalizeInlineText(targetText)) return;
+    if (replaceParagraphTextByIndex(docDom, index, targetText)) changed.push(index);
+  });
+
+  return { normalized: changed.length, paragraphs: changed };
+}
+
+function forceParagraphLeftNoIndent(para, dom) {
+  let pPr = w1(para, 'pPr');
+  if (!pPr) {
+    pPr = wNew(dom, 'pPr');
+    para.insertBefore(pPr, para.firstChild);
+  }
+
+  let ind = w1(pPr, 'ind');
+  if (!ind) {
+    ind = wNew(dom, 'ind');
+    pPr.appendChild(ind);
+  }
+  ['left', 'right', 'firstLine', 'hanging'].forEach(attr => wSa(ind, attr, 0));
+  ['leftChars', 'rightChars', 'firstLineChars', 'hangingChars'].forEach(attr => {
+    ind.removeAttribute(`w:${attr}`);
+    ind.removeAttributeNS(W, attr);
+  });
+
+  let jc = w1(pPr, 'jc');
+  if (!jc) {
+    jc = wNew(dom, 'jc');
+    pPr.appendChild(jc);
+  }
+  wSa(jc, 'val', 'left');
+
+  let spacing = w1(pPr, 'spacing');
+  if (!spacing) {
+    spacing = wNew(dom, 'spacing');
+    pPr.appendChild(spacing);
+  }
+  wSa(spacing, 'before', 0);
+  wSa(spacing, 'after', 0);
+}
+
+function enforceIdentityParagraphLayout(docDom, identityTargetTexts = []) {
+  const normalizedTargets = new Set((identityTargetTexts || []).map(text => normText(text)).filter(Boolean));
+  if (!normalizedTargets.size) return { aligned: 0, paragraphs: [] };
+
+  const paragraphs = wAll(docDom, 'p');
+  if (!paragraphs.length) return { aligned: 0, paragraphs: [] };
+
+  const resumoIndex = findParagraphIndexByLabels(docDom, ['resumo']);
+  const maxIndex = resumoIndex >= 0 ? resumoIndex : Math.min(paragraphs.length - 1, 40);
+  const aligned = [];
+
+  paragraphs.forEach((para, index) => {
+    if (index > maxIndex) return;
+    const textNorm = normText(getParagraphPlainText(para));
+    if (!textNorm || !normalizedTargets.has(textNorm)) return;
+    forceParagraphLeftNoIndent(para, docDom);
+    aligned.push(index);
+  });
+
+  return { aligned: aligned.length, paragraphs: aligned, maxIndex };
+}
+
 function compactReferencesSpacing(docDom) {
   const paragraphs = wAll(docDom, 'p');
   if (!paragraphs.length) return { removed: 0 };
@@ -3524,6 +3696,8 @@ async function formatDocx(file, cfg, options = {}) {
   // 2. Parágrafos
   const stats = {paras:0, runs:0};
   processParagraphs(docDom, cfg, styleMap, false, stats);
+  options.runtimeReport.resumoLabelNormalization = normalizeArticleResumoLabel(docDom);
+  options.runtimeReport.identityParagraphLayout = enforceIdentityParagraphLayout(docDom, options.identityTargetTexts || []);
 
   if (fnDom) { const s={paras:0,runs:0}; processParagraphs(fnDom, cfg, styleMap, true, s); }
   if (enDom) processParagraphs(enDom, cfg, styleMap, true, {paras:0,runs:0});
@@ -3539,6 +3713,7 @@ async function formatDocx(file, cfg, options = {}) {
 
   const clean = s => s.replace(/ xmlns=""/g,'');
   zip.file('word/document.xml', clean(ser.serializeToString(docDom)));
+  if (documentRelsDom) zip.file('word/_rels/document.xml.rels', clean(ser.serializeToString(documentRelsDom)));
   if (stylesDom) zip.file('word/styles.xml', clean(ser.serializeToString(stylesDom)));
   if (fnDom)     zip.file('word/footnotes.xml', clean(ser.serializeToString(fnDom)));
   if (enDom)     zip.file('word/endnotes.xml', clean(ser.serializeToString(enDom)));
