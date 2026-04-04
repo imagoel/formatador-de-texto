@@ -124,6 +124,7 @@ header h1{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;le
 .preset-pills{display:flex;flex-wrap:wrap;gap:6px}
 .pill{font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 11px;border-radius:20px;border:1px solid var(--border2);background:var(--paper);color:var(--ink-mid);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:5px;white-space:nowrap}
 .pill:hover{border-color:var(--accent);color:var(--accent)}
+.pill:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14)}
 .pill.active{background:var(--accent);color:white;border-color:var(--accent);font-weight:500}
 .pill.current-pill{border-style:dashed}
 .pill.current-pill.active{background:var(--ink);border-color:var(--ink);color:white}
@@ -303,7 +304,11 @@ input[type=number]{width:62px;text-align:right}
 :root[data-theme="dark"] .upload-zone:hover,:root[data-theme="dark"] .upload-zone.drag{background:#1d2736}
 :root[data-theme="dark"] .field-control,:root[data-theme="dark"] .field-apply-mode-btn,:root[data-theme="dark"] .field-map-btn,:root[data-theme="dark"] .pill,:root[data-theme="dark"] .btn-save-preset,:root[data-theme="dark"] .save-form input[type=text],:root[data-theme="dark"] select,:root[data-theme="dark"] input[type=number],:root[data-theme="dark"] .sidebar-tab-btn,:root[data-theme="dark"] .theme-toggle-btn{background:#1a2230;color:var(--ink);border-color:var(--border2)}
 :root[data-theme="dark"] .field-badge{background:#1a2230;border-color:var(--border2)}
-:root[data-theme="dark"] .sidebar-tab-btn.active,:root[data-theme="dark"] .field-apply-mode-btn.active,:root[data-theme="dark"] .pill.current-pill.active{background:var(--accent);border-color:var(--accent);color:#f5f9ff}
+:root[data-theme="dark"] .btn-link{color:#9ab8ea}
+:root[data-theme="dark"] .btn-link:hover{color:#d3e4ff}
+:root[data-theme="dark"] .pill.active,:root[data-theme="dark"] .sidebar-tab-btn.active,:root[data-theme="dark"] .field-apply-mode-btn.active,:root[data-theme="dark"] .pill.current-pill.active{background:var(--accent);border-color:var(--accent);color:#f5f9ff}
+:root[data-theme="dark"] .pill.active .pill-del,:root[data-theme="dark"] .pill.current-pill.active .pill-del{color:#f5f9ff;opacity:.9}
+:root[data-theme="dark"] .pill.active:hover,:root[data-theme="dark"] .sidebar-tab-btn.active:hover,:root[data-theme="dark"] .field-apply-mode-btn.active:hover{filter:brightness(1.06)}
 :root[data-theme="dark"] .toast{background:rgba(26,34,48,.96);border-color:var(--border2);color:var(--ink-mid)}
 :root[data-theme="dark"] .global-drop-overlay-inner{background:linear-gradient(180deg,rgba(26,34,48,.96),rgba(21,28,40,.96));border-color:rgba(255,255,255,.2)}
 :root[data-theme="dark"] .action-button-wrap .btn-go{box-shadow:0 -6px 22px rgba(0,0,0,.34),0 16px 32px rgba(0,0,0,.44)}
@@ -326,7 +331,11 @@ input[type=number]{width:62px;text-align:right}
   :root:not([data-theme="light"]) .upload-zone:hover,:root:not([data-theme="light"]) .upload-zone.drag{background:#1d2736}
   :root:not([data-theme="light"]) .field-control,:root:not([data-theme="light"]) .field-apply-mode-btn,:root:not([data-theme="light"]) .field-map-btn,:root:not([data-theme="light"]) .pill,:root:not([data-theme="light"]) .btn-save-preset,:root:not([data-theme="light"]) .save-form input[type=text],:root:not([data-theme="light"]) select,:root:not([data-theme="light"]) input[type=number],:root:not([data-theme="light"]) .sidebar-tab-btn,:root:not([data-theme="light"]) .theme-toggle-btn{background:#1a2230;color:var(--ink);border-color:var(--border2)}
   :root:not([data-theme="light"]) .field-badge{background:#1a2230;border-color:var(--border2)}
-  :root:not([data-theme="light"]) .sidebar-tab-btn.active,:root:not([data-theme="light"]) .field-apply-mode-btn.active,:root:not([data-theme="light"]) .pill.current-pill.active{background:var(--accent);border-color:var(--accent);color:#f5f9ff}
+  :root:not([data-theme="light"]) .btn-link{color:#9ab8ea}
+  :root:not([data-theme="light"]) .btn-link:hover{color:#d3e4ff}
+  :root:not([data-theme="light"]) .pill.active,:root:not([data-theme="light"]) .sidebar-tab-btn.active,:root:not([data-theme="light"]) .field-apply-mode-btn.active,:root:not([data-theme="light"]) .pill.current-pill.active{background:var(--accent);border-color:var(--accent);color:#f5f9ff}
+  :root:not([data-theme="light"]) .pill.active .pill-del,:root:not([data-theme="light"]) .pill.current-pill.active .pill-del{color:#f5f9ff;opacity:.9}
+  :root:not([data-theme="light"]) .pill.active:hover,:root:not([data-theme="light"]) .sidebar-tab-btn.active:hover,:root:not([data-theme="light"]) .field-apply-mode-btn.active:hover{filter:brightness(1.06)}
   :root:not([data-theme="light"]) .toast{background:rgba(26,34,48,.96);border-color:var(--border2);color:var(--ink-mid)}
   :root:not([data-theme="light"]) .global-drop-overlay-inner{background:linear-gradient(180deg,rgba(26,34,48,.96),rgba(21,28,40,.96));border-color:rgba(255,255,255,.2)}
   :root:not([data-theme="light"]) .action-button-wrap .btn-go{box-shadow:0 -6px 22px rgba(0,0,0,.34),0 16px 32px rgba(0,0,0,.44)}
