@@ -2742,7 +2742,10 @@ async function formatDocx(file, cfg, options = {}) {
 
   if (fnDom) { const s={paras:0,runs:0}; processParagraphs(fnDom, cfg, styleMap, true, s); }
   if (enDom) processParagraphs(enDom, cfg, styleMap, true, {paras:0,runs:0});
-  editorialDocs.forEach(part => processHeaderFooterRuns(part.dom, cfg));
+  const shouldPreserveEditorialTypography = !!options.editorialTemplate?.applyFirstPageTemplate;
+  if (!shouldPreserveEditorialTypography) {
+    editorialDocs.forEach(part => processHeaderFooterRuns(part.dom, cfg));
+  }
 
   // 3. Estilos padrão
   if (stylesDom) {
