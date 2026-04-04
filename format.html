@@ -464,8 +464,8 @@ const ARTICLE_FIELD_DEFS = [
   { id: 'abstract', label: 'Abstract', group: 'Abstract', type: 'textarea', required: true, applyMode: 'replace', allowManualMap: true, help: 'Bloco de abstract em ingles.' },
   { id: 'keywords', label: 'Keywords', group: 'Abstract', type: 'tags', required: true, applyMode: 'replace', allowManualMap: true, help: 'Separe os termos por ponto e virgula.' },
   { id: 'doi', label: 'DOI', group: 'Editorial', type: 'text', required: false, applyMode: 'template', allowManualMap: false, help: 'Informe o DOI completo ou apenas o identificador.' },
-  { id: 'recebido_em', label: 'Recebido em', group: 'Editorial', type: 'text', required: false, applyMode: 'template', allowManualMap: false, help: 'Data editorial em portugues.' },
-  { id: 'aprovado_em', label: 'Aprovado em', group: 'Editorial', type: 'text', required: false, applyMode: 'template', allowManualMap: false, help: 'Data editorial em portugues.' },
+  { id: 'recebido_em', label: 'Recebido em', group: 'Editorial', type: 'date', required: false, applyMode: 'template', allowManualMap: false, help: 'Data editorial em portugues (clique para selecionar).' },
+  { id: 'aprovado_em', label: 'Aprovado em', group: 'Editorial', type: 'date', required: false, applyMode: 'template', allowManualMap: false, help: 'Data editorial em portugues (clique para selecionar).' },
   { id: 'citacao_rodape', label: 'Citacao curta do rodape', group: 'Bibliografia editorial', type: 'textarea', required: false, applyMode: 'template', allowManualMap: false, help: 'Linha de citacao curta usada no rodape do artigo.' }
 ];
 
@@ -662,15 +662,45 @@ function resetPresetFieldStates(preset = getActivePreset()) {
   ensurePresetFieldStates(preset);
 }
 
+function normalizeDateInputValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+
+  const common = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+  if (common) return `${common[1].padStart(2, '0')}/${common[2].padStart(2, '0')}/${common[3]}`;
+
+  return raw;
+}
+
+function formatDateValueForControl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const br = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);
+  if (br) return `${br[3]}-${br[2].padStart(2, '0')}-${br[1].padStart(2, '0')}`;
+
+  return '';
+}
+
 function setPresetFieldValue(fieldId, value) {
   const preset = getActivePreset();
   if (!preset?.fieldsEnabled) return;
   const stateMap = ensurePresetFieldStates(preset);
+  const fieldDef = getPresetFieldDefs(preset).find(field => field.id === fieldId) || null;
   const previous = stateMap[fieldId] || {};
-  const trimmed = value.trim();
+  const normalizedValue = fieldDef?.type === 'date'
+    ? normalizeDateInputValue(value)
+    : String(value || '');
+  const trimmed = normalizedValue.trim();
   stateMap[fieldId] = {
     ...previous,
-    value,
+    value: normalizedValue,
     sourceState: trimmed ? 'manual_input' : 'not_found',
     confidence: trimmed ? (previous.sourceRef ? 'manual' : 'none') : 'none',
     sourceRef: trimmed ? (previous.sourceRef || null) : null,
@@ -868,7 +898,11 @@ function updateRenderedFieldCard(fieldId) {
   if (!card) return;
 
   const control = card.querySelector('[data-field-id]');
-  if (control && control !== document.activeElement) control.value = state.value || '';
+  if (control && control !== document.activeElement) {
+    control.value = field?.type === 'date'
+      ? formatDateValueForControl(state.value || '')
+      : (state.value || '');
+  }
 
   const badge = card.querySelector('.field-badge');
   if (badge) {
@@ -1058,12 +1092,13 @@ function renderPresetFields() {
         const meta = FIELD_STATE_META[state.sourceState] || FIELD_STATE_META.not_found;
         const requiredText = field.required ? 'Obrigatorio' : 'Opcional';
         const value = state.value || '';
+        const controlValue = field.type === 'date' ? formatDateValueForControl(value) : value;
         const placeholder = field.type === 'tags' ? 'Ex.: termo 1; termo 2; termo 3' : '';
         const isMappingThisField = activeFieldMapping === field.id;
         const sourceNote = getFieldSourceNote(field, state);
         const control = field.type === 'textarea'
           ? `<textarea class="field-control field-textarea" data-field-id="${escAttr(field.id)}" rows="4">${escHtml(value)}</textarea>`
-          : `<input class="field-control" data-field-id="${escAttr(field.id)}" type="text" value="${escAttr(value)}" placeholder="${escAttr(placeholder)}">`;
+          : `<input class="field-control" data-field-id="${escAttr(field.id)}" type="${field.type === 'date' ? 'date' : 'text'}" value="${escAttr(controlValue)}" placeholder="${escAttr(placeholder)}">`;
         const actions = field.allowManualMap
           ? `<div class="field-actions">
                <span class="field-source-note" data-field-source-note="${escAttr(field.id)}" ${sourceNote ? '' : 'hidden'}>${escHtml(sourceNote)}</span>
@@ -2759,12 +2794,12 @@ function resolveArticleIdentityInsertAnchorIndex(docDom, plan = {}) {
   const paragraphs = wAll(docDom, 'p');
   if (!paragraphs.length) return 0;
 
+  const resumoLabelIndex = findParagraphIndexByLabels(docDom, ['resumo']);
+  if (resumoLabelIndex >= 0) return resumoLabelIndex;
+
   if (Number.isInteger(plan.resumoIndex) && plan.resumoIndex >= 0 && plan.resumoIndex < paragraphs.length) {
     return plan.resumoIndex;
   }
-
-  const resumoLabelIndex = findParagraphIndexByLabels(docDom, ['resumo']);
-  if (resumoLabelIndex >= 0) return resumoLabelIndex;
 
   if (Number.isInteger(plan.titleIndex) && plan.titleIndex >= 0 && plan.titleIndex < paragraphs.length) {
     return Math.min(plan.titleIndex + 1, paragraphs.length);
