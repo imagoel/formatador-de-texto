@@ -23,17 +23,18 @@
 body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;font-size:14px}
 
 /* ── Header ── */
-header{border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;background:var(--paper);position:sticky;top:0;z-index:50}
+header{border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:baseline;gap:.75rem;background:var(--paper);position:sticky;top:0;z-index:50}
 .header-copy{display:flex;align-items:baseline;gap:.75rem;min-width:0;flex:1}
 header h1{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;letter-spacing:-.02em}
 header small{font-size:12px;color:var(--ink-light);font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.header-logo{flex-shrink:0;display:flex;align-items:center}
-.header-logo img{height:48px;width:auto;display:block}
+.floating-brand-logo{position:fixed;right:24px;bottom:24px;z-index:48;pointer-events:none;opacity:.9}
+.floating-brand-logo img{display:block;width:170px;height:auto}
 @media(max-width:820px){
   header{padding:.75rem 1rem;align-items:flex-start}
   .header-copy{flex-direction:column;align-items:flex-start;gap:2px}
   header small{white-space:normal;overflow:visible}
-  .header-logo img{height:36px}
+  .floating-brand-logo{right:12px;bottom:96px;opacity:.7}
+  .floating-brand-logo img{width:118px}
 }
 
 /* ── Layout ── */
@@ -290,9 +291,6 @@ input[type=number]{width:62px;text-align:right}
     <h1>Formatador de Documentos Word</h1>
     <small>Preserva negrito, itálico, tabelas e imagens · Aplica os parâmetros definidos e ajuda na triagem do artigo</small>
   </div>
-  <div class="header-logo" aria-label="Marca Immanuel Vicente">
-    <img src="assets/minha-logo.png" alt="Immanuel Vicente">
-  </div>
 </header>
 
 <div class="wrap">
@@ -477,6 +475,9 @@ input[type=number]{width:62px;text-align:right}
   </div>
 </div>
 
+<div class="floating-brand-logo" aria-hidden="true">
+  <img src="assets/minha-logo.png" alt="">
+</div>
 <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
 <div class="global-drop-overlay" id="globalDropOverlay" aria-hidden="true">
   <div class="global-drop-overlay-inner">
@@ -1995,6 +1996,33 @@ function buildArticleFooterCitation(stateMap, editorialContext) {
   return `${buildCitationSegment(author)} ${buildCitationSegment(title)} ${suffix}`.replace(/\s+/g, ' ').trim();
 }
 
+function extractIssnIdentifier(text) {
+  const match = String(text || '').match(/\bISSN\s*[0-9Xx-]+/i);
+  return match ? normalizeInlineText(match[0]) : '';
+}
+
+function removeIssnFromJournalLine(text) {
+  return normalizeInlineText(String(text || '').replace(/\bISSN\s*[0-9Xx-]+.*$/i, '').replace(/[.]+$/g, ''));
+}
+
+function extractJournalSegmentFromCitationLine(text) {
+  const raw = normalizeInlineText(text);
+  if (!raw) return '';
+  const idx = raw.toLowerCase().indexOf('griot:');
+  if (idx < 0) return '';
+  return raw.slice(idx).replace(/[.]+$/g, '').trim();
+}
+
+function buildSyncedJournalLine(values = {}, editorialContext = {}) {
+  const contextLine = normalizeInlineText(editorialContext?.journalLine || '');
+  const fromCitation = extractJournalSegmentFromCitationLine(values?.citacao_rodape || '');
+  const baseLine = fromCitation || removeIssnFromJournalLine(contextLine);
+  if (!baseLine) return contextLine;
+  if (/\bISSN\b/i.test(baseLine)) return baseLine;
+  const issn = extractIssnIdentifier(contextLine);
+  return issn ? `${baseLine} ${issn}`.trim() : baseLine;
+}
+
 function syncArticleEditorialDefaults(preset = getActivePreset(), editorialContext = currentArticleEditorialContext, options = {}) {
   if (!preset?.fieldsEnabled || !preset.articleReview) return [];
   const stateMap = ensurePresetFieldStates(preset);
@@ -2129,7 +2157,7 @@ function collectEditorialTemplateReplacements(preset = getActivePreset()) {
 
   const values = collectTemplateFieldValues(preset);
   const contextualValues = {
-    journalLine: normalizeInlineText(currentArticleEditorialContext?.journalLine || '')
+    journalLine: buildSyncedJournalLine(values, currentArticleEditorialContext || {})
   };
   return templateConfig.replacements.map(rule => {
     let text = '';
@@ -2238,6 +2266,7 @@ const WORD_HEADER_PART_RE = /^word\/header\d+(?:_codex_\d+)*\.xml$/i;
 const WORD_FOOTER_PART_RE = /^word\/footer\d+(?:_codex_\d+)*\.xml$/i;
 const WORD_HEADER_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml';
 const WORD_FOOTER_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml';
+const WORD_IMAGE_REL_TYPE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
 const wAll = (p,t) => [...p.getElementsByTagNameNS(W,t)];
 const w1   = (p,t) => p.getElementsByTagNameNS(W,t)[0];
 const wNew = (d,t) => d.createElementNS(W,'w:'+t);
@@ -2329,6 +2358,69 @@ function getWordRelRefId(node) {
 
 function setWordRelRefId(node, value) {
   node.setAttributeNS(REL_NS, 'r:id', value);
+}
+
+function getDrawingBlipEmbedId(node) {
+  if (!node) return '';
+  return node.getAttribute('r:embed') || node.getAttributeNS(REL_NS, 'embed') || '';
+}
+
+function setDrawingBlipEmbedId(node, value) {
+  if (!node || !value) return;
+  node.setAttributeNS(REL_NS, 'r:embed', value);
+}
+
+function paragraphContainsDrawing(para) {
+  return !!w1(para, 'drawing');
+}
+
+function findOrcidIconRunData(docDom) {
+  const paragraphs = wAll(docDom, 'p');
+  for (const para of paragraphs) {
+    const textNorm = normText(getParagraphPlainText(para));
+    if (!/orcid/.test(textNorm)) continue;
+    const runs = wAll(para, 'r');
+    for (const run of runs) {
+      if (!w1(run, 'drawing')) continue;
+      const blips = [...run.getElementsByTagNameNS('*', 'blip')];
+      const blip = blips[0];
+      const rid = getDrawingBlipEmbedId(blip);
+      if (rid) return { run, rid };
+    }
+  }
+  return null;
+}
+
+function remapDrawingEmbedIds(runNode, ridMap = new Map()) {
+  if (!runNode || !ridMap?.size) return;
+  [...runNode.getElementsByTagNameNS('*', 'blip')].forEach(blip => {
+    const oldRid = getDrawingBlipEmbedId(blip);
+    const nextRid = ridMap.get(oldRid);
+    if (nextRid) setDrawingBlipEmbedId(blip, nextRid);
+  });
+}
+
+function prependRunToParagraph(para, runNode) {
+  if (!para || !runNode) return false;
+  const firstRun = w1(para, 'r');
+  if (firstRun) {
+    para.insertBefore(runNode, firstRun);
+    return true;
+  }
+  const pPr = w1(para, 'pPr');
+  if (pPr && pPr.nextSibling) {
+    para.insertBefore(runNode, pPr.nextSibling);
+    return true;
+  }
+  para.appendChild(runNode);
+  return true;
+}
+
+function ensureParagraphHasOrcidIcon(para, docDom, iconRunTemplate) {
+  if (!para || !docDom || !iconRunTemplate) return false;
+  if (paragraphContainsDrawing(para)) return false;
+  const clonedRun = docDom.importNode(iconRunTemplate, true);
+  return prependRunToParagraph(para, clonedRun);
 }
 
 function createRelationshipsDom(parser) {
@@ -2617,6 +2709,54 @@ async function copyZipPartWithRelationships(sourceZip, targetZip, sourcePartPath
   return resolvedTargetPartPath;
 }
 
+async function resolveOrcidIconRunTemplate({ zip, docDom, parser, documentRelsDom, contentTypesDom, editorialTemplate }) {
+  const fromDocument = findOrcidIconRunData(docDom);
+  if (fromDocument?.run) return docDom.importNode(fromDocument.run, true);
+
+  const templatePath = editorialTemplate?.path || 'templates/artigo-modelo-base.docx';
+  let templateZip = null;
+  try {
+    templateZip = await loadTemplateZip({ path: templatePath });
+  } catch (_) {
+    return null;
+  }
+  if (!templateZip) return null;
+
+  const templateDocDom = await loadXmlFromZip(templateZip, 'word/document.xml', parser);
+  const templateRelsDom = await loadXmlFromZip(templateZip, 'word/_rels/document.xml.rels', parser);
+  if (!templateDocDom || !templateRelsDom) return null;
+
+  const fromTemplate = findOrcidIconRunData(templateDocDom);
+  if (!fromTemplate?.run || !fromTemplate?.rid) return null;
+
+  const templateRel = findRelationshipById(templateRelsDom, fromTemplate.rid);
+  if (!templateRel) return null;
+
+  const sourceMediaPath = resolveZipRelativePath('word/document.xml', getRelationshipAttr(templateRel, 'Target'));
+  const templateContentTypesDom = await loadXmlFromZip(templateZip, '[Content_Types].xml', parser);
+  const copiedMap = new Map();
+  const copiedMediaPath = await copyZipPartWithRelationships(
+    templateZip,
+    zip,
+    sourceMediaPath,
+    sourceMediaPath,
+    parser,
+    copiedMap,
+    templateContentTypesDom && contentTypesDom
+      ? { sourceDom: templateContentTypesDom, targetDom: contentTypesDom }
+      : null
+  );
+  const newRid = appendRelationship(documentRelsDom, {
+    type: getRelationshipAttr(templateRel, 'Type') || WORD_IMAGE_REL_TYPE,
+    target: relativeZipPath('word/document.xml', copiedMediaPath),
+    targetMode: getRelationshipAttr(templateRel, 'TargetMode')
+  });
+
+  const importedRun = docDom.importNode(fromTemplate.run, true);
+  remapDrawingEmbedIds(importedRun, new Map([[fromTemplate.rid, newRid]]));
+  return importedRun;
+}
+
 function copyTemplateHeaderFooterSpacing(templateSectPr, targetSectPr) {
   const templatePgMar = w1(templateSectPr, 'pgMar');
   if (!templatePgMar) return;
@@ -2897,10 +3037,12 @@ function replaceParagraphTextByIndex(docDom, paragraphIndex, newText) {
   return true;
 }
 
-function applyFieldMappingsToDocument(docDom, fieldMappings = []) {
+function applyFieldMappingsToDocument(docDom, fieldMappings = [], options = {}) {
+  const orcidIconRunTemplate = options?.orcidIconRunTemplate || null;
   const applied = [];
   const skipped = [];
   const seenParagraphs = new Set();
+  const paragraphs = wAll(docDom, 'p');
 
   fieldMappings.forEach(mapping => {
     const paragraphIndex = mapping?.sourceRef?.paragraphIndex;
@@ -2914,6 +3056,9 @@ function applyFieldMappingsToDocument(docDom, fieldMappings = []) {
     }
     const ok = replaceParagraphTextByIndex(docDom, paragraphIndex, mapping.value);
     if (ok) {
+      if (mapping.fieldId === 'autor_orcid' && orcidIconRunTemplate && paragraphs[paragraphIndex]) {
+        ensureParagraphHasOrcidIcon(paragraphs[paragraphIndex], docDom, orcidIconRunTemplate);
+      }
       seenParagraphs.add(paragraphIndex);
       applied.push(mapping);
     } else {
@@ -2991,7 +3136,8 @@ function resolveArticleIdentityInsertAnchorIndex(docDom, plan = {}) {
   return paragraphs.length;
 }
 
-function applyArticleManualIdentityInsertions(docDom, plan = null) {
+function applyArticleManualIdentityInsertions(docDom, plan = null, options = {}) {
+  const orcidIconRunTemplate = options?.orcidIconRunTemplate || null;
   const requested = Array.isArray(plan?.insertions) ? plan.insertions : [];
   if (!requested.length) return { applied: [], skipped: [], anchorIndex: -1 };
 
@@ -3021,6 +3167,9 @@ function applyArticleManualIdentityInsertions(docDom, plan = null) {
     }
 
     const paragraph = createParagraphWithSingleText(docDom, text);
+    if (item.fieldId === 'autor_orcid' && orcidIconRunTemplate) {
+      ensureParagraphHasOrcidIcon(paragraph, docDom, orcidIconRunTemplate);
+    }
     if (anchorParagraph && anchorParagraph.parentNode) {
       anchorParagraph.parentNode.insertBefore(paragraph, anchorParagraph);
     } else {
@@ -3151,9 +3300,27 @@ async function formatDocx(file, cfg, options = {}) {
   const footerDocs = await loadWordPartDocs(zip, parser, WORD_FOOTER_PART_RE);
   const editorialDocs = [...headerDocs, ...footerDocs];
   const documentRelsDom = await loadXmlFromZip(zip, 'word/_rels/document.xml.rels', parser) || createRelationshipsDom(parser);
+  const contentTypesDom = await loadXmlFromZip(zip, '[Content_Types].xml', parser);
+  let orcidIconRunTemplate = null;
+  try {
+    orcidIconRunTemplate = await resolveOrcidIconRunTemplate({
+      zip,
+      docDom,
+      parser,
+      documentRelsDom,
+      contentTypesDom,
+      editorialTemplate: options.editorialTemplate
+    });
+  } catch (_) {
+    orcidIconRunTemplate = null;
+  }
 
   if (options.fieldMappings?.length) {
-    applyFieldMappingsToDocument(docDom, options.fieldMappings.filter(mapping => mapping.sourceRef?.file === 'word/document.xml'));
+    applyFieldMappingsToDocument(
+      docDom,
+      options.fieldMappings.filter(mapping => mapping.sourceRef?.file === 'word/document.xml'),
+      { orcidIconRunTemplate }
+    );
     editorialDocs.forEach(part => {
       const partMappings = options.fieldMappings.filter(mapping => mapping.sourceRef?.file === part.path);
       if (partMappings.length) applyFieldMappingsToXmlPart(part.dom, partMappings);
@@ -3162,7 +3329,11 @@ async function formatDocx(file, cfg, options = {}) {
 
   if (options.manualIdentityPlan?.insertions?.length) {
     options.runtimeReport = options.runtimeReport || {};
-    options.runtimeReport.manualIdentityInsertions = applyArticleManualIdentityInsertions(docDom, options.manualIdentityPlan);
+    options.runtimeReport.manualIdentityInsertions = applyArticleManualIdentityInsertions(
+      docDom,
+      options.manualIdentityPlan,
+      { orcidIconRunTemplate }
+    );
   }
 
   if (options.editorialReplacements?.length) {
@@ -3179,7 +3350,6 @@ async function formatDocx(file, cfg, options = {}) {
   options.runtimeReport = options.runtimeReport || {};
   options.runtimeReport.referencesCompaction = compactReferencesSpacing(docDom);
 
-  const contentTypesDom = await loadXmlFromZip(zip, '[Content_Types].xml', parser);
   if (contentTypesDom) {
     ensureWordHeaderFooterContentTypes(contentTypesDom, zip);
     zip.file('[Content_Types].xml', cleanXmlMarkup(ser.serializeToString(contentTypesDom)));
