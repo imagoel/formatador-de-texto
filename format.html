@@ -525,6 +525,7 @@ const STRUCTURE_HINTS_COVERED_BY_FIELDS = new Set([
   'has_keywords_label',
   'has_author_block_after_title'
 ]);
+const IDENTITY_INSERTION_FIELD_IDS = new Set(['autor_nome', 'autor_instituicao', 'autor_orcid', 'autor_email']);
 
 // ═══════════════════════════════════════
 //  PRESETS EMBUTIDOS
@@ -698,13 +699,15 @@ function setPresetFieldValue(fieldId, value) {
     ? normalizeDateInputValue(value)
     : String(value || '');
   const trimmed = normalizedValue.trim();
+  const isIdentityField = IDENTITY_INSERTION_FIELD_IDS.has(fieldId);
+  const preserveMappedSource = !!trimmed && !!previous.sourceRef && (!isIdentityField || previous.sourceOrigin === 'selected_in_document');
   stateMap[fieldId] = {
     ...previous,
     value: normalizedValue,
     sourceState: trimmed ? 'manual_input' : 'not_found',
-    confidence: trimmed ? (previous.sourceRef ? 'manual' : 'none') : 'none',
-    sourceRef: trimmed ? (previous.sourceRef || null) : null,
-    sourceOrigin: trimmed ? (previous.sourceOrigin || null) : null
+    confidence: trimmed ? (preserveMappedSource ? 'manual' : 'none') : 'none',
+    sourceRef: preserveMappedSource ? (previous.sourceRef || null) : null,
+    sourceOrigin: preserveMappedSource ? (previous.sourceOrigin || null) : null
   };
   return syncArticleEditorialDefaults(preset, currentArticleEditorialContext, { changedFieldId: fieldId });
 }
@@ -875,6 +878,9 @@ function getFieldSourceNote(field, state) {
   if (!field) return '';
   if (state?.sourceState === 'selected_in_document') return 'Trecho selecionado manualmente na previa.';
   if (state?.sourceState === 'detected_auto') return 'Valor sugerido pela leitura automatica do arquivo.';
+  if (state?.sourceState === 'manual_input' && !state?.sourceRef && IDENTITY_INSERTION_FIELD_IDS.has(field.id)) {
+    return 'Valor manual sera inserido acima do Resumo sem sobrescrever o trecho detectado no arquivo.';
+  }
   if (state?.sourceState === 'model_default') {
     return field.id === 'citacao_rodape'
       ? 'Linha montada a partir do autor, do titulo e dos dados editoriais do modelo.'
