@@ -1839,6 +1839,49 @@ function prepareFieldMappingsForFormat(preset = getActivePreset(), structureRepo
   return { fieldMappings, withheldMappings, confidenceLevel };
 }
 
+function normalizeManualIdentityFieldValue(fieldId, rawValue) {
+  const value = String(rawValue || '').replace(/\s+/g, ' ').trim();
+  if (!value) return '';
+  if (fieldId === 'autor_email' && !/^e-?mail\s*:/i.test(value)) return `E-mail: ${value}`;
+  if (fieldId === 'autor_orcid' && !/^https?:\/\/(?:www\.)?orcid\.org\//i.test(value) && /^(\d{4}-){3}\d{3}[\dX]$/i.test(value)) {
+    return `https://orcid.org/${value}`;
+  }
+  return value;
+}
+
+function collectArticleManualIdentityPlan(preset = getActivePreset()) {
+  if (!preset?.fieldsEnabled || !preset?.articleReview) return null;
+  const stateMap = ensurePresetFieldStates(preset);
+  const fieldOrder = ['autor_nome', 'autor_instituicao', 'autor_orcid', 'autor_email'];
+  const insertions = [];
+
+  fieldOrder.forEach(fieldId => {
+    const state = stateMap[fieldId] || {};
+    const text = normalizeManualIdentityFieldValue(fieldId, state.value);
+    if (!text) return;
+
+    const hasDocumentSourceRef = state?.sourceRef?.file === 'word/document.xml' && Number.isInteger(state?.sourceRef?.paragraphIndex);
+    if (hasDocumentSourceRef) return;
+    if (state.sourceState !== 'manual_input') return;
+
+    insertions.push({ fieldId, text });
+  });
+
+  if (!insertions.length) return null;
+  const titleIndex = stateMap?.titulo_pt?.sourceRef?.file === 'word/document.xml' && Number.isInteger(stateMap?.titulo_pt?.sourceRef?.paragraphIndex)
+    ? stateMap.titulo_pt.sourceRef.paragraphIndex
+    : null;
+  const resumoIndex = stateMap?.resumo?.sourceRef?.file === 'word/document.xml' && Number.isInteger(stateMap?.resumo?.sourceRef?.paragraphIndex)
+    ? stateMap.resumo.sourceRef.paragraphIndex
+    : null;
+
+  return {
+    insertions,
+    titleIndex,
+    resumoIndex
+  };
+}
+
 function formatDoiValue(value) {
   const trimmed = String(value || '').trim();
   if (!trimmed) return '';
@@ -1920,6 +1963,7 @@ async function runFormat() {
   const mappingPlan = prepareFieldMappingsForFormat();
   const formatOptions = {
     fieldMappings: mappingPlan.fieldMappings,
+    manualIdentityPlan: collectArticleManualIdentityPlan(),
     editorialTemplate: getActiveEditorialTemplateConfig(),
     editorialReplacements: collectEditorialTemplateReplacements(),
     runtimeReport: {}
@@ -1954,6 +1998,9 @@ async function runFormat() {
     }
     if (formatOptions.runtimeReport?.pageNumberField?.created?.length) {
       pushToast('A paginacao automatica do rodape foi ajustada para manter o padrao do modelo em todas as paginas.', 'info', 3600);
+    }
+    if (formatOptions.runtimeReport?.manualIdentityInsertions?.applied?.length) {
+      pushToast(`Foram inseridos ${formatOptions.runtimeReport.manualIdentityInsertions.applied.length} campo(s) manuais de autoria no corpo do artigo.`, 'info', 4200);
     }
   } catch(e) {
     console.error(e);
@@ -2688,6 +2735,88 @@ function applyFieldMappingsToXmlPart(xmlDom, fieldMappings = []) {
   return { applied, skipped };
 }
 
+function createParagraphWithSingleText(dom, text) {
+  const paragraph = wNew(dom, 'p');
+  const run = wNew(dom, 'r');
+  const t = wNew(dom, 't');
+  setTextNodeValue(t, text);
+  run.appendChild(t);
+  paragraph.appendChild(run);
+  return paragraph;
+}
+
+function findParagraphIndexByLabels(docDom, labels = []) {
+  if (!Array.isArray(labels) || !labels.length) return -1;
+  const paragraphs = wAll(docDom, 'p');
+  for (let i = 0; i < paragraphs.length; i++) {
+    const textNorm = normText(getParagraphPlainText(paragraphs[i]));
+    if (matchesAnyLabel(textNorm, labels)) return i;
+  }
+  return -1;
+}
+
+function resolveArticleIdentityInsertAnchorIndex(docDom, plan = {}) {
+  const paragraphs = wAll(docDom, 'p');
+  if (!paragraphs.length) return 0;
+
+  if (Number.isInteger(plan.resumoIndex) && plan.resumoIndex >= 0 && plan.resumoIndex < paragraphs.length) {
+    return plan.resumoIndex;
+  }
+
+  const resumoLabelIndex = findParagraphIndexByLabels(docDom, ['resumo']);
+  if (resumoLabelIndex >= 0) return resumoLabelIndex;
+
+  if (Number.isInteger(plan.titleIndex) && plan.titleIndex >= 0 && plan.titleIndex < paragraphs.length) {
+    return Math.min(plan.titleIndex + 1, paragraphs.length);
+  }
+
+  const firstContentIndex = paragraphs.findIndex(para => !!normText(getParagraphPlainText(para)));
+  if (firstContentIndex >= 0) return Math.min(firstContentIndex + 1, paragraphs.length);
+  return paragraphs.length;
+}
+
+function applyArticleManualIdentityInsertions(docDom, plan = null) {
+  const requested = Array.isArray(plan?.insertions) ? plan.insertions : [];
+  if (!requested.length) return { applied: [], skipped: [], anchorIndex: -1 };
+
+  const body = w1(docDom, 'body');
+  if (!body) return { applied: [], skipped: requested.map(item => ({ ...item, reason: 'missing_body' })), anchorIndex: -1 };
+
+  const existingTextSet = new Set(
+    wAll(docDom, 'p')
+      .map(para => normText(getParagraphPlainText(para)))
+      .filter(Boolean)
+  );
+  const anchorIndex = resolveArticleIdentityInsertAnchorIndex(docDom, plan);
+  let anchorParagraph = wAll(docDom, 'p')[anchorIndex] || null;
+  const applied = [];
+  const skipped = [];
+
+  requested.forEach(item => {
+    const text = String(item?.text || '').trim();
+    if (!text) {
+      skipped.push({ ...item, reason: 'empty_text' });
+      return;
+    }
+    const normalized = normText(text);
+    if (normalized && existingTextSet.has(normalized)) {
+      skipped.push({ ...item, reason: 'already_present' });
+      return;
+    }
+
+    const paragraph = createParagraphWithSingleText(docDom, text);
+    if (anchorParagraph && anchorParagraph.parentNode) {
+      anchorParagraph.parentNode.insertBefore(paragraph, anchorParagraph);
+    } else {
+      body.appendChild(paragraph);
+    }
+    existingTextSet.add(normalized);
+    applied.push(item);
+  });
+
+  return { applied, skipped, anchorIndex };
+}
+
 function applyEditorialTemplateReplacements(editorialDocs, docDom, documentRelsDom, replacements = []) {
   const partTargets = getSectionReferenceTargets(docDom, documentRelsDom);
   const docsByPath = new Map(editorialDocs.map(part => [part.path, part.dom]));
@@ -2813,6 +2942,11 @@ async function formatDocx(file, cfg, options = {}) {
       const partMappings = options.fieldMappings.filter(mapping => mapping.sourceRef?.file === part.path);
       if (partMappings.length) applyFieldMappingsToXmlPart(part.dom, partMappings);
     });
+  }
+
+  if (options.manualIdentityPlan?.insertions?.length) {
+    options.runtimeReport = options.runtimeReport || {};
+    options.runtimeReport.manualIdentityInsertions = applyArticleManualIdentityInsertions(docDom, options.manualIdentityPlan);
   }
 
   if (options.editorialReplacements?.length) {
