@@ -4,10 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Formatador de Documentos Word</title>
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=2">
-<link rel="icon" type="image/png" sizes="32x32" href="assets/minha-logo.png?v=2">
-<link rel="shortcut icon" href="assets/minha-logo.png?v=2">
-<link rel="apple-touch-icon" href="assets/minha-logo.png?v=2">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=3">
+<link rel="shortcut icon" href="assets/favicon.svg?v=3">
+<link rel="apple-touch-icon" href="assets/favicon.svg?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -21,30 +20,33 @@
   --r:10px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;font-size:14px}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);height:100vh;font-size:14px;overflow:hidden}
 
 /* ── Header ── */
-header{border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:baseline;gap:.75rem;background:var(--paper);position:sticky;top:0;z-index:50}
+header{padding:.62rem 1.55rem .52rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;background:var(--paper);position:sticky;top:0;z-index:50;border-bottom:0!important;box-shadow:none!important}
 .header-copy{display:flex;align-items:baseline;gap:.75rem;min-width:0;flex:1}
 header h1{font-family:'Playfair Display',serif;font-size:20px;font-weight:400;letter-spacing:-.02em}
-header small{font-size:12px;color:var(--ink-light);font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.theme-toggle-btn{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:7px 12px;border-radius:999px;border:1px solid var(--border2);background:var(--paper-2);color:var(--ink);cursor:pointer;transition:.15s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;min-height:34px}
+.theme-toggle-btn:hover{border-color:var(--accent);color:var(--accent)}
+.theme-toggle-btn:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.14)}
 .floating-brand-logo{position:fixed;right:24px;bottom:24px;z-index:48;pointer-events:none;opacity:1}
 .floating-brand-logo img{display:block;width:170px;height:auto;filter:drop-shadow(0 3px 9px rgba(24,22,15,.14))}
 @media(max-width:820px){
   header{padding:.75rem 1rem;align-items:flex-start}
   .header-copy{flex-direction:column;align-items:flex-start;gap:2px}
-  header small{white-space:normal;overflow:visible}
+  .theme-toggle-btn{padding:6px 10px;font-size:11px;min-height:30px}
   .floating-brand-logo{right:12px;bottom:96px;opacity:.92}
   .floating-brand-logo img{width:118px}
 }
 
 /* ── Layout ── */
-.wrap{max-width:1280px;margin:0 auto;padding:2rem;display:grid;grid-template-columns:minmax(0,1fr) 365px;gap:1.75rem;align-items:start}
-@media(max-width:820px){.wrap{grid-template-columns:1fr;padding:1rem}}
+.wrap{max-width:1280px;margin:0 auto;padding:.35rem 2rem .8rem;display:grid;grid-template-columns:minmax(0,1fr) 365px;gap:1.75rem;align-items:start;height:calc(100vh - 56px);overflow:hidden}
+@media(max-width:820px){.wrap{grid-template-columns:1fr;padding:1rem;height:auto;overflow:visible}}
 .workspace-panel{min-width:0}
 .workspace-panel.drag-target{border-color:rgba(var(--accent-rgb),.42);box-shadow:0 0 0 3px rgba(var(--accent-rgb),.08),0 16px 32px rgba(24,22,15,.06)}
 .workspace-body{padding:16px;display:flex;flex-direction:column;gap:1rem}
-.workspace-note{font-size:12px;color:var(--ink-light);line-height:1.6;padding:12px 14px;background:linear-gradient(180deg,rgba(242,237,228,.85),rgba(250,248,243,.9));border:1px solid var(--border);border-radius:8px}
+.workspace-note{font-size:11.5px;color:var(--ink-light);line-height:1.45;padding:8px 10px;background:linear-gradient(180deg,rgba(242,237,228,.85),rgba(250,248,243,.9));border:1px solid var(--border);border-radius:8px}
 .mapping-notice{display:none;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;border:1px solid rgba(var(--accent-rgb),.16);border-radius:8px;background:rgba(var(--accent-rgb),.06)}
 .mapping-notice.show{display:flex}
 .mapping-notice-copy{font-size:12px;line-height:1.5;color:var(--ink-mid)}
@@ -87,10 +89,10 @@ header small{font-size:12px;color:var(--ink-light);font-weight:300;white-space:n
 @media(max-width:820px){.preview-box{min-height:360px;max-height:68vh}}
 
 /* ── Sidebar ── */
-.sidebar{position:sticky;top:72px;display:flex;flex-direction:column;gap:1rem;height:calc(100vh - 88px);min-height:0;overflow:hidden}
+.sidebar{position:relative;display:flex;flex-direction:column;gap:.75rem;height:100%;min-height:0;overflow:hidden}
 @media(max-width:820px){.sidebar{position:static;height:auto;max-height:none;overflow:visible}}
 .sidebar > .panel{flex-shrink:0}
-.sidebar-tab-shell{display:flex;flex-direction:column;gap:.85rem;min-height:0;flex:1 1 auto}
+.sidebar-tab-shell{display:flex;flex-direction:column;gap:.6rem;min-height:0;flex:1 1 auto}
 .sidebar-tab-nav{display:flex;gap:8px;min-height:0}
 .sidebar-tab-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border:1px solid var(--border2);border-radius:999px;background:white;color:var(--ink-mid);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:.15s}
 .sidebar-tab-btn:hover{border-color:var(--accent);color:var(--accent)}
@@ -101,7 +103,7 @@ header small{font-size:12px;color:var(--ink-light);font-weight:300;white-space:n
 .sidebar-tab-btn.active .sidebar-tab-count{background:rgba(255,255,255,.16)}
 .sidebar-tab-panels{display:flex;flex:1 1 auto;min-height:0;overflow:hidden}
 .sidebar-tab-panel{display:none;flex:1 1 auto;min-height:0}
-.sidebar-tab-panel.active{display:flex;flex-direction:column;gap:1rem;flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:6px;padding-bottom:4px;scrollbar-gutter:stable}
+.sidebar-tab-panel.active{display:flex;flex-direction:column;gap:.75rem;flex:1 1 auto;min-height:0;overflow-y:auto;padding-right:6px;padding-bottom:4px;scrollbar-gutter:stable}
 .sidebar-tab-panel > .panel{flex-shrink:0}
 .sidebar-tab-panel::-webkit-scrollbar{width:4px}
 .sidebar-tab-panel::-webkit-scrollbar-thumb{background:var(--paper-3);border-radius:4px}
@@ -171,7 +173,7 @@ input[type=number]{width:62px;text-align:right}
 
 /* ── Action panel ── */
 .action-panel{overflow:visible;flex-shrink:0}
-.action-body{padding:14px;display:flex;flex-direction:column;gap:12px}
+.action-body{padding:10px;display:flex;flex-direction:column;gap:8px}
 .action-button-wrap{display:block}
 
 /* ── Mode notice ── */
@@ -213,7 +215,8 @@ input[type=number]{width:62px;text-align:right}
 .global-drop-overlay-inner strong{font-family:'Playfair Display',serif;font-size:23px;font-weight:500;color:var(--ink)}
 .global-drop-overlay-inner span{font-size:12.5px;color:var(--ink-light)}
 @media(max-width:820px){
-  body{padding-bottom:104px}
+  html,body{overflow:auto}
+  body{padding-bottom:104px;overflow:auto}
   .toast-stack{left:12px;right:12px;top:auto;bottom:88px}
   .toast{min-width:0;max-width:none}
   .action-button-wrap{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:110}
@@ -282,30 +285,52 @@ input[type=number]{width:62px;text-align:right}
 
 /* ── Note ── */
 .note{font-size:11.5px;color:var(--ink-light);line-height:1.65;padding:8px 12px;background:var(--paper-2);border-left:2px solid var(--paper-3);border-radius:0 5px 5px 0}
-.action-note{margin-top:2px}
+.action-note{display:none}
+
+:root[data-theme="dark"]{
+  --ink:#e6ebf3;--ink-mid:#bcc6d4;--ink-light:#8e9ab0;
+  --paper:#151a23;--paper-2:#1c2431;--paper-3:#2a3445;
+  --accent:#4f8dee;--accent2:#3f7bd0;--accent-rgb:79,141,238;
+  --danger:#ff7e6d;--danger2:#ff9a8e;--green:#57b37a;--blue:#8ab4ff;
+  --border:rgba(226,235,248,.12);--border2:rgba(226,235,248,.24);
+}
+:root[data-theme="dark"] body{background:var(--paper);color:var(--ink)}
+:root[data-theme="dark"] header{background:rgba(21,26,35,.92);backdrop-filter:blur(6px)}
+:root[data-theme="dark"] .panel,:root[data-theme="dark"] .file-card,:root[data-theme="dark"] .field-card,:root[data-theme="dark"] .review-item,:root[data-theme="dark"] .review-group,:root[data-theme="dark"] .article-fields-note,:root[data-theme="dark"] .mode-note-copy,:root[data-theme="dark"] .workspace-note,:root[data-theme="dark"] .note{background:var(--paper-2);color:var(--ink-mid);border-color:var(--border)}
+:root[data-theme="dark"] .panel-hd,:root[data-theme="dark"] .file-top,:root[data-theme="dark"] .info-bar{background:#202a39;border-color:var(--border)}
+:root[data-theme="dark"] .preview-box{background:linear-gradient(180deg,#1a2230 0%, #141b26 100%);color:var(--ink-mid)}
+:root[data-theme="dark"] .upload-zone{background:linear-gradient(180deg,#1a2230 0%, #161d29 100%);border-color:var(--border2)}
+:root[data-theme="dark"] .upload-zone:hover,:root[data-theme="dark"] .upload-zone.drag{background:#1d2736}
+:root[data-theme="dark"] .field-control,:root[data-theme="dark"] .field-apply-mode-btn,:root[data-theme="dark"] .field-map-btn,:root[data-theme="dark"] .pill,:root[data-theme="dark"] .btn-save-preset,:root[data-theme="dark"] .save-form input[type=text],:root[data-theme="dark"] select,:root[data-theme="dark"] input[type=number],:root[data-theme="dark"] .sidebar-tab-btn,:root[data-theme="dark"] .theme-toggle-btn{background:#1a2230;color:var(--ink);border-color:var(--border2)}
+:root[data-theme="dark"] .field-badge{background:#1a2230;border-color:var(--border2)}
+:root[data-theme="dark"] .sidebar-tab-btn.active,:root[data-theme="dark"] .field-apply-mode-btn.active,:root[data-theme="dark"] .pill.current-pill.active{background:var(--accent);border-color:var(--accent);color:#f5f9ff}
+:root[data-theme="dark"] .toast{background:rgba(26,34,48,.96);border-color:var(--border2);color:var(--ink-mid)}
+:root[data-theme="dark"] .global-drop-overlay-inner{background:linear-gradient(180deg,rgba(26,34,48,.96),rgba(21,28,40,.96));border-color:rgba(255,255,255,.2)}
+:root[data-theme="dark"] .action-button-wrap .btn-go{box-shadow:0 -6px 22px rgba(0,0,0,.34),0 16px 32px rgba(0,0,0,.44)}
+:root[data-theme="dark"] .floating-brand-logo img{filter:brightness(1.25) saturate(1.16) drop-shadow(0 0 10px rgba(124,172,255,.52))}
 
 @media (prefers-color-scheme: dark){
-  :root{
+  :root:not([data-theme="light"]){
     --ink:#e6ebf3;--ink-mid:#bcc6d4;--ink-light:#8e9ab0;
     --paper:#151a23;--paper-2:#1c2431;--paper-3:#2a3445;
     --accent:#4f8dee;--accent2:#3f7bd0;--accent-rgb:79,141,238;
     --danger:#ff7e6d;--danger2:#ff9a8e;--green:#57b37a;--blue:#8ab4ff;
     --border:rgba(226,235,248,.12);--border2:rgba(226,235,248,.24);
   }
-  body{background:var(--paper);color:var(--ink)}
-  header{background:rgba(21,26,35,.92);backdrop-filter:blur(6px)}
-  .panel,.file-card,.field-card,.review-item,.review-group,.article-fields-note,.mode-note-copy,.workspace-note,.note{background:var(--paper-2);color:var(--ink-mid);border-color:var(--border)}
-  .panel-hd,.file-top,.info-bar{background:#202a39;border-color:var(--border)}
-  .preview-box{background:linear-gradient(180deg,#1a2230 0%, #141b26 100%);color:var(--ink-mid)}
-  .upload-zone{background:linear-gradient(180deg,#1a2230 0%, #161d29 100%);border-color:var(--border2)}
-  .upload-zone:hover,.upload-zone.drag{background:#1d2736}
-  .field-control,.field-apply-mode-btn,.field-map-btn,.pill,.btn-save-preset,.save-form input[type=text],select,input[type=number],.sidebar-tab-btn{background:#1a2230;color:var(--ink);border-color:var(--border2)}
-  .field-badge{background:#1a2230;border-color:var(--border2)}
-  .sidebar-tab-btn.active,.field-apply-mode-btn.active,.pill.current-pill.active{background:var(--accent);border-color:var(--accent);color:#f5f9ff}
-  .toast{background:rgba(26,34,48,.96);border-color:var(--border2);color:var(--ink-mid)}
-  .global-drop-overlay-inner{background:linear-gradient(180deg,rgba(26,34,48,.96),rgba(21,28,40,.96));border-color:rgba(255,255,255,.2)}
-  .action-button-wrap .btn-go{box-shadow:0 -6px 22px rgba(0,0,0,.34),0 16px 32px rgba(0,0,0,.44)}
-  .floating-brand-logo img{filter:brightness(1.25) saturate(1.16) drop-shadow(0 0 10px rgba(124,172,255,.52))}
+  :root:not([data-theme="light"]) body{background:var(--paper);color:var(--ink)}
+  :root:not([data-theme="light"]) header{background:rgba(21,26,35,.92);backdrop-filter:blur(6px)}
+  :root:not([data-theme="light"]) .panel,:root:not([data-theme="light"]) .file-card,:root:not([data-theme="light"]) .field-card,:root:not([data-theme="light"]) .review-item,:root:not([data-theme="light"]) .review-group,:root:not([data-theme="light"]) .article-fields-note,:root:not([data-theme="light"]) .mode-note-copy,:root:not([data-theme="light"]) .workspace-note,:root:not([data-theme="light"]) .note{background:var(--paper-2);color:var(--ink-mid);border-color:var(--border)}
+  :root:not([data-theme="light"]) .panel-hd,:root:not([data-theme="light"]) .file-top,:root:not([data-theme="light"]) .info-bar{background:#202a39;border-color:var(--border)}
+  :root:not([data-theme="light"]) .preview-box{background:linear-gradient(180deg,#1a2230 0%, #141b26 100%);color:var(--ink-mid)}
+  :root:not([data-theme="light"]) .upload-zone{background:linear-gradient(180deg,#1a2230 0%, #161d29 100%);border-color:var(--border2)}
+  :root:not([data-theme="light"]) .upload-zone:hover,:root:not([data-theme="light"]) .upload-zone.drag{background:#1d2736}
+  :root:not([data-theme="light"]) .field-control,:root:not([data-theme="light"]) .field-apply-mode-btn,:root:not([data-theme="light"]) .field-map-btn,:root:not([data-theme="light"]) .pill,:root:not([data-theme="light"]) .btn-save-preset,:root:not([data-theme="light"]) .save-form input[type=text],:root:not([data-theme="light"]) select,:root:not([data-theme="light"]) input[type=number],:root:not([data-theme="light"]) .sidebar-tab-btn,:root:not([data-theme="light"]) .theme-toggle-btn{background:#1a2230;color:var(--ink);border-color:var(--border2)}
+  :root:not([data-theme="light"]) .field-badge{background:#1a2230;border-color:var(--border2)}
+  :root:not([data-theme="light"]) .sidebar-tab-btn.active,:root:not([data-theme="light"]) .field-apply-mode-btn.active,:root:not([data-theme="light"]) .pill.current-pill.active{background:var(--accent);border-color:var(--accent);color:#f5f9ff}
+  :root:not([data-theme="light"]) .toast{background:rgba(26,34,48,.96);border-color:var(--border2);color:var(--ink-mid)}
+  :root:not([data-theme="light"]) .global-drop-overlay-inner{background:linear-gradient(180deg,rgba(26,34,48,.96),rgba(21,28,40,.96));border-color:rgba(255,255,255,.2)}
+  :root:not([data-theme="light"]) .action-button-wrap .btn-go{box-shadow:0 -6px 22px rgba(0,0,0,.34),0 16px 32px rgba(0,0,0,.44)}
+  :root:not([data-theme="light"]) .floating-brand-logo img{filter:brightness(1.25) saturate(1.16) drop-shadow(0 0 10px rgba(124,172,255,.52))}
 }
 </style>
 </head>
@@ -314,8 +339,8 @@ input[type=number]{width:62px;text-align:right}
 <header>
   <div class="header-copy">
     <h1>Formatador de Documentos Word</h1>
-    <small>Preserva negrito, itálico, tabelas e imagens · Aplica os parâmetros definidos e ajuda na triagem do artigo</small>
   </div>
+  <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-pressed="false">🌙 Modo escuro</button>
 </header>
 
 <div class="wrap">
@@ -324,7 +349,7 @@ input[type=number]{width:62px;text-align:right}
   <div class="panel workspace-panel">
     <div class="panel-hd">Documento e prévia</div>
     <div class="workspace-body">
-      <p class="workspace-note" id="workspaceNote">Envie o arquivo uma vez para conferir a estrutura antes de gerar a versão final. A prévia abaixo ajuda a revisar o conteúdo sem sair da mesma página.</p>
+      <p class="workspace-note" id="workspaceNote">Envie um arquivo .docx para iniciar a formatação.</p>
       <div class="mapping-notice" id="mappingNotice">
         <span class="mapping-notice-copy" id="mappingNoticeCopy">Selecao ativa.</span>
         <button type="button" class="btn-link mapping-notice-cancel" onclick="cancelFieldMapping()">Cancelar selecao</button>
@@ -493,7 +518,6 @@ input[type=number]{width:62px;text-align:right}
           </button>
         </div>
 
-        <p class="note action-note">Os campos acima sao sempre aplicados ao formatar. A fonte escolhida vale para todo o texto. O tamanho do texto vale para o corpo; o compacto vale para citacoes, notas e legendas. Titulos preservam o tamanho original. A triagem do artigo aparece no preset Artigo.</p>
       </div>
     </div>
 
@@ -688,7 +712,7 @@ let lastPreviewEntries = [];
 const templateBufferCache = new Map();
 let activeSidebarTab = 'style';
 const CONFIG_INPUT_IDS = ['fonte', 'sizeNormal', 'sizeCompact', 'spacingNormal', 'spacingCompact', 'indentFirst', 'mTop', 'mBottom', 'mLeft', 'mRight', 'chkAlign'];
-const DEFAULT_WORKSPACE_NOTE = 'Envie o arquivo uma vez para conferir a estrutura antes de gerar a versao final. A previa abaixo ajuda a revisar o conteudo sem sair da mesma pagina.';
+const DEFAULT_WORKSPACE_NOTE = 'Envie um arquivo .docx para iniciar a formatação.';
 
 function loadCustomPresets() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
@@ -1411,6 +1435,69 @@ const gVal = id => $(id).value;
 const gChk = id => $(id).checked;
 const setVal = (id, v) => { $(id).value = v; };
 const setChk = (id, v) => { $(id).checked = !!v; };
+const THEME_STORAGE_KEY = 'formatador_theme';
+const themeToggleBtn = $('themeToggleBtn');
+
+function safeGetSavedTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    return (saved === 'dark' || saved === 'light') ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeSetSavedTheme(theme) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // ignora erros de armazenamento (modo privado, bloqueios etc)
+  }
+}
+
+function getSystemPreferredTheme() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+}
+
+function updateThemeToggleLabel(theme) {
+  if (!themeToggleBtn) return;
+  const darkModeActive = theme === 'dark';
+  themeToggleBtn.setAttribute('aria-pressed', String(darkModeActive));
+  themeToggleBtn.textContent = darkModeActive ? '☀ Modo claro' : '🌙 Modo escuro';
+}
+
+function applyTheme(theme) {
+  const finalTheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', finalTheme);
+  updateThemeToggleLabel(finalTheme);
+}
+
+function initThemeToggle() {
+  const savedTheme = safeGetSavedTheme();
+  const initialTheme = savedTheme || getSystemPreferredTheme();
+  applyTheme(initialTheme);
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      safeSetSavedTheme(next);
+      applyTheme(next);
+    });
+  }
+
+  if (window.matchMedia) {
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncWithSystem = event => {
+      if (safeGetSavedTheme()) return;
+      applyTheme(event.matches ? 'dark' : 'light');
+    };
+    if (typeof media.addEventListener === 'function') media.addEventListener('change', syncWithSystem);
+    else if (typeof media.addListener === 'function') media.addListener(syncWithSystem);
+  }
+}
 
 // ═══════════════════════════════════════
 //  UPLOAD
@@ -3890,6 +3977,7 @@ CONFIG_INPUT_IDS.forEach(id => {
 });
 
 updateWorkspaceNote();
+initThemeToggle();
 applyPreviewStyles();
 applyPreset('abnt');
 </script>
