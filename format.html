@@ -554,6 +554,8 @@ const BUILT_IN_PRESETS = [
       applyFirstPageTemplate: true,
       path: 'templates/artigo-modelo-base.docx',
       replacements: [
+        { ref: 'header:first', paragraphIndex: 1, contextKey: 'journalLine' },
+        { ref: 'header:default', paragraphIndex: 0, contextKey: 'journalLine' },
         { ref: 'header:first', paragraphIndex: 2, fieldId: 'doi', transform: 'doi_url' },
         { ref: 'header:first', paragraphIndex: 3, template: 'Recebido: {recebido_em} | Aprovado: {aprovado_em}', requiredFields: ['recebido_em', 'aprovado_em'] },
         { ref: 'header:first', paragraphIndex: 4, template: 'Received: {recebido_em} | Approved: {aprovado_em}', requiredFields: ['recebido_em', 'aprovado_em'] },
@@ -1867,9 +1869,14 @@ function collectEditorialTemplateReplacements(preset = getActivePreset()) {
   if (!templateConfig?.replacements?.length) return [];
 
   const values = collectTemplateFieldValues(preset);
+  const contextualValues = {
+    journalLine: normalizeInlineText(currentArticleEditorialContext?.journalLine || '')
+  };
   return templateConfig.replacements.map(rule => {
     let text = '';
-    if (rule.fieldId) {
+    if (rule.contextKey) {
+      text = contextualValues[rule.contextKey] || '';
+    } else if (rule.fieldId) {
       text = values[rule.fieldId] || '';
       if (rule.transform === 'doi_url') text = formatDoiValue(text);
     } else if (rule.template) {
