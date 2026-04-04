@@ -32,10 +32,7 @@ O projeto foi pensado para uso institucional, com dois modos principais:
 
 - `format.html`: interface, logica de presets, leitura da previa, engine DOCX e triagem
 - `templates/artigo-modelo-base.docx`: base editorial do preset `Artigo`
-- `ROADMAP_MODELOS_INSTITUCIONAIS.md`: planejamento de evolucao
-- `PROJECT_CONTEXT.md`: contexto tecnico resumido
 - `Dockerfile` e `docker-compose.yml`: containerizacao
-- `DEPLOY_PORTAINER.md`: guia de publicacao
 
 ## Como rodar localmente
 
@@ -64,7 +61,7 @@ Aplicacao disponivel em:
 
 - [http://localhost:8080](http://localhost:8080)
 
-## Status do roadmap (resumo)
+## Status atual
 
 Concluido:
 
@@ -87,6 +84,3 @@ Pendente:
 - preset institucional novo `Despacho de bens`
 - niveis de mapeamento manual por selecao fina de texto (alem do paragrafo inteiro)
 - camada opcional de backend/API para geracao institucional (ex.: numeracao oficial)
-
-Consulte o detalhamento em `ROADMAP_MODELOS_INSTITUCIONAIS.md`.
-
