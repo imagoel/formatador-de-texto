@@ -466,8 +466,6 @@ const ARTICLE_FIELD_DEFS = [
   { id: 'doi', label: 'DOI', group: 'Editorial', type: 'text', required: false, applyMode: 'template', allowManualMap: false, help: 'Informe o DOI completo ou apenas o identificador.' },
   { id: 'recebido_em', label: 'Recebido em', group: 'Editorial', type: 'text', required: false, applyMode: 'template', allowManualMap: false, help: 'Data editorial em portugues.' },
   { id: 'aprovado_em', label: 'Aprovado em', group: 'Editorial', type: 'text', required: false, applyMode: 'template', allowManualMap: false, help: 'Data editorial em portugues.' },
-  { id: 'received_em', label: 'Received', group: 'Editorial', type: 'text', required: false, applyMode: 'template', allowManualMap: false, help: 'Data editorial em ingles.' },
-  { id: 'approved_em', label: 'Approved', group: 'Editorial', type: 'text', required: false, applyMode: 'template', allowManualMap: false, help: 'Data editorial em ingles.' },
   { id: 'citacao_rodape', label: 'Citacao curta do rodape', group: 'Bibliografia editorial', type: 'textarea', required: false, applyMode: 'template', allowManualMap: false, help: 'Linha de citacao curta usada no rodape do artigo.' }
 ];
 
@@ -556,9 +554,9 @@ const BUILT_IN_PRESETS = [
       applyFirstPageTemplate: true,
       path: 'templates/artigo-modelo-base.docx',
       replacements: [
-        { ref: 'header:first', paragraphIndex: 1, fieldId: 'doi', transform: 'doi_url' },
-        { ref: 'header:first', paragraphIndex: 2, template: 'Recebido: {recebido_em} | Aprovado: {aprovado_em}', requiredFields: ['recebido_em', 'aprovado_em'] },
-        { ref: 'header:first', paragraphIndex: 3, template: 'Received: {received_em} | Approved: {approved_em}', requiredFields: ['received_em', 'approved_em'] },
+        { ref: 'header:first', paragraphIndex: 2, fieldId: 'doi', transform: 'doi_url' },
+        { ref: 'header:first', paragraphIndex: 3, template: 'Recebido: {recebido_em} | Aprovado: {aprovado_em}', requiredFields: ['recebido_em', 'aprovado_em'] },
+        { ref: 'header:first', paragraphIndex: 4, template: 'Received: {recebido_em} | Approved: {aprovado_em}', requiredFields: ['recebido_em', 'aprovado_em'] },
         { ref: 'footer:default', paragraphIndex: 1, fieldId: 'citacao_rodape' },
         { ref: 'footer:first', paragraphIndex: 1, fieldId: 'citacao_rodape' }
       ]
@@ -1788,9 +1786,7 @@ function syncArticleEditorialDefaults(preset = getActivePreset(), editorialConte
   [
     ['doi', editorialContext?.doi],
     ['recebido_em', editorialContext?.recebido_em],
-    ['aprovado_em', editorialContext?.aprovado_em],
-    ['received_em', editorialContext?.received_em],
-    ['approved_em', editorialContext?.approved_em]
+    ['aprovado_em', editorialContext?.aprovado_em]
   ].forEach(([fieldId, value]) => {
     if (setModelDefaultFieldValue(stateMap, fieldId, value)) changed.push(fieldId);
   });
@@ -1861,6 +1857,8 @@ function collectTemplateFieldValues(preset = getActivePreset()) {
   getPresetFieldDefs(preset).forEach(field => {
     values[field.id] = String(stateMap[field.id]?.value || '').trim();
   });
+  if (values.recebido_em && !values.received_em) values.received_em = values.recebido_em;
+  if (values.aprovado_em && !values.approved_em) values.approved_em = values.aprovado_em;
   return values;
 }
 
@@ -2609,6 +2607,45 @@ function applyEditorialTemplateReplacements(editorialDocs, docDom, documentRelsD
   return { applied, skipped };
 }
 
+function getParagraphPlainText(para) {
+  return wAll(para, 't').map(t => t.textContent || '').join('').replace(/\s+/g, ' ').trim();
+}
+
+function compactReferencesSpacing(docDom) {
+  const paragraphs = wAll(docDom, 'p');
+  if (!paragraphs.length) return { removed: 0 };
+
+  const referencesLabels = ['referencias'];
+  const stopLabels = ['anexo', 'anexos', 'apendice', 'apendices', 'appendix', 'annex'];
+  let inReferencesSection = false;
+  let removed = 0;
+
+  paragraphs.forEach(para => {
+    const text = getParagraphPlainText(para);
+    const textNorm = normText(text);
+
+    if (!inReferencesSection) {
+      if (matchesAnyLabel(textNorm, referencesLabels)) inReferencesSection = true;
+      return;
+    }
+
+    if (matchesAnyLabel(textNorm, stopLabels)) {
+      inReferencesSection = false;
+      return;
+    }
+
+    if (textNorm) return;
+    if (w1(para, 'sectPr')) return;
+    if (w1(para, 'drawing') || w1(para, 'object') || w1(para, 'instrText') || w1(para, 'fldSimple')) return;
+    if (!para.parentNode) return;
+
+    para.parentNode.removeChild(para);
+    removed++;
+  });
+
+  return { removed };
+}
+
 function processHeaderFooterRuns(dom, cfg) {
   if (cfg.font === 'keep') return;
   wAll(dom, 'r').forEach(run => {
@@ -2682,6 +2719,9 @@ async function formatDocx(file, cfg, options = {}) {
     options.runtimeReport = options.runtimeReport || {};
     options.runtimeReport.pageNumberField = ensureArticleFooterPageFields(editorialDocs, docDom, documentRelsDom);
   }
+
+  options.runtimeReport = options.runtimeReport || {};
+  options.runtimeReport.referencesCompaction = compactReferencesSpacing(docDom);
 
   const contentTypesDom = await loadXmlFromZip(zip, '[Content_Types].xml', parser);
   if (contentTypesDom) {
