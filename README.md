@@ -57,9 +57,20 @@ Observacao: o preset `Artigo` usa leitura de template por `fetch`, por isso prec
 docker compose up -d --build
 ```
 
-Aplicacao disponivel em:
+Com o `docker-compose.yml` atual, o container sobe com Nginx interno na porta `80`, mas **nao publica uma porta no host por padrao**. Esse compose foi preparado para uso em Portainer, proxy reverso ou rede Docker compartilhada.
 
-- [http://localhost:8080](http://localhost:8080)
+Se voce quiser validar localmente no navegador sem alterar o compose, o caminho mais simples continua sendo:
+
+```powershell
+python -m http.server 8080
+```
+
+Se precisar expor localmente via Docker, adicione temporariamente um mapeamento de portas no `docker-compose.yml`, por exemplo:
+
+```yml
+ports:
+  - "8080:80"
+```
 
 ## Status atual
 
@@ -84,3 +95,9 @@ Pendente:
 - preset institucional novo `Despacho de bens`
 - niveis de mapeamento manual por selecao fina de texto (alem do paragrafo inteiro)
 - camada opcional de backend/API para geracao institucional (ex.: numeracao oficial)
+
+## Observacoes de deploy
+
+- O `index.html` e a entrada principal servida pelo Nginx e redireciona automaticamente para `format.html`
+- O `docker-compose.yml` atual usa `expose: 80`, sem publicacao direta no host
+- A exposicao publica final depende do ambiente de deploy (Portainer, proxy reverso ou publicacao manual de porta)
